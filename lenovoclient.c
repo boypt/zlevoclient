@@ -259,15 +259,10 @@ get_eap_type(const struct sniff_eap_header *eap_header)
 {
     switch (eap_header->eap_t){
         case 0x01:
-            if (eap_header->eap_ask_id == 0x01 &&
-                            eap_header->eap_op == 0x01)
+            if (eap_header->eap_op == 0x01)
                     return EAP_REQUEST_IDENTITY;
-            if (eap_header->eap_ask_id == 0x02 &&
-                            eap_header->eap_op == 0x04)
+            if (eap_header->eap_op == 0x04)
                     return EAP_REQUETS_MD5_CHALLENGE;
-            if (eap_header->eap_ask_id == 0x03 &&
-                            eap_header->eap_op == 0x01)
-                return EAP_REQUEST_IDENTITY_KEEP_ALIVE;
             break;
         case 0x03:
         //    if (eap_header->eap_ask_id == 0x02)
@@ -403,7 +398,6 @@ void
 init_frames()
 {
     int data_index;
-
 
     /*****  EAPOL Header  *******/
     u_char eapol_header[SIZE_ETHERNET];
