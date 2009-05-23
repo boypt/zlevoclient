@@ -40,7 +40,7 @@
 #include <assert.h>
 
 /* ZDClient Version */
-#define ZDC_VER "0.5"
+#define LENOVO_VER "0.1"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
@@ -90,25 +90,28 @@ enum STATE {
    ONLINE
 };
 
-void    fill_password_md5(u_char attach_key[]);
 void    send_eap_packet(enum EAPType send_type);
 void    show_usage();
 char*   get_md5_digest(const char* str, size_t len);
 void    action_by_eap_type(enum EAPType pType, 
                         const struct sniff_eap_header *header);
-void    send_eap_packet(enum EAPType send_type);
 void    init_frames();
 void    init_info();
 void    init_device();
 void    init_arguments(int argc, char **argv);
 int     set_device_new_ip();
-void    fill_password_md5(u_char attach_key[]);
+void    fill_password_md5(u_char attach_key[], u_int id);
 
 
 static void signal_interrupted (int signo);
 static void get_packet(u_char *args, const struct pcap_pkthdr *header, 
                         const u_char *packet);
 
+
+u_char version_segment[] = {0x0a, 0x0b, 0x18, 0x2d};
+u_char talier_eapol_start[] = {0x00, 0x00, 0x2f, 0xfc, 0x03, 0x00};
+u_char talier_eap_md5_resp[] = {0x00, 0x00, 0x2f, 0xfc, 0x00, 0x03, 0x01, 0x01, 0x00};
+//u_char talier_eap_
 
 char        errbuf[PCAP_ERRBUF_SIZE];  /* error buffer */
 enum STATE  state;                     /* program state */
@@ -142,8 +145,8 @@ char        *client_ver = NULL;         /* 报文协议版本号 */
 u_char      muticast_mac[] =            /* 802.1x的认证服务器多播地址 */
                         {0x01, 0x80, 0xc2, 0x00, 0x00, 0x03};
 
-u_char      eapol_start[18];            /* EAPOL START报文 */
-u_char      eapol_logoff[18];           /* EAPOL LogOff报文 */
+u_char      eapol_start[64];            /* EAPOL START报文 */
+u_char      eapol_logoff[64];           /* EAPOL LogOff报文 */
 u_char      *eap_response_ident = NULL; /* EAP RESPON/IDENTITY报文 */
 u_char      *eap_response_md5ch = NULL; /* EAP RESPON/MD5 报文 */
 
@@ -233,7 +236,7 @@ show_usage()
             
             "\tAnother PT work. Blog: http://apt-blog.co.cc\n"
             "\t\t\t\t\t\t\t\t2009.05.22\n",
-            ZDC_VER);
+            LENOVO_VER);
 }
 
 /* calcuate for md5 digest */
@@ -323,22 +326,14 @@ action_by_eap_type(enum EAPType pType,
         case EAP_REQUETS_MD5_CHALLENGE:
             state = ID_AUTHED;
             fprintf(stdout, "##Protocol: REQUEST MD5-Challenge(PASSWORD)\n");
-            fill_password_md5((u_char*)header->eap_md5_challenge);
+            fill_password_md5((u_char*)header->eap_md5_challenge, 
+                                        header->eap_ask_id);
             send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
             break;
         case EAP_REQUEST_IDENTITY_KEEP_ALIVE:
             if (state == ONLINE){
                 fprintf(stdout, "[%d]##Protocol: REQUEST EAP_REQUEST_IDENTITY_KEEP_ALIVE (%d)\n",
                                             current_pid,live_count++);
-            }
-
-            // 使用伪IP模式认证成功后，获取真实IP，并写入RES/IDTY数据块
-            if (use_pseudo_ip){
-
-                //若获取成功，关闭伪IP模式标签
-                if (set_device_new_ip() == 0) {
-                    use_pseudo_ip = 0;
-                }
             }
 
             send_eap_packet(EAP_RESPONSE_IDENTITY_KEEP_ALIVE);
@@ -357,35 +352,24 @@ send_eap_packet(enum EAPType send_type)
         case EAPOL_START:
             state = STARTED;
             frame_data= eapol_start;
-            frame_length = 14 + 4;
+            frame_length = 64;
             fprintf(stdout, "##Protocol: SEND EAPOL-Start\n");
             break;
         case EAPOL_LOGOFF:
             state = READY;
             frame_data = eapol_logoff;
-            frame_length = 14 + 4;
+            frame_length = 64;
             fprintf(stdout, "##Protocol: SEND EAPOL-Logoff\n");
             break;
         case EAP_RESPONSE_IDENTITY:
             frame_data = eap_response_ident;
-            frame_length = 14 + 9 + username_length + 46;
-            if (*(frame_data + 14 + 5) != 0x01){
-                *(frame_data + 14 + 5) = 0x01;
-            }
+            frame_length = 54 + username_length;
             fprintf(stdout, "##Protocol: SEND EAP-Response/Identity\n");
             break;
         case EAP_RESPONSE_MD5_CHALLENGE:
             frame_data = eap_response_md5ch;
-            frame_length = 14 + 10 + 16 + username_length + 46;
+            frame_length = 40 + username_length + 14;
             fprintf(stdout, "##Protocol: SEND EAP-Response/Md5-Challenge\n");
-            break;
-        case EAP_RESPONSE_IDENTITY_KEEP_ALIVE:
-            frame_data = eap_response_ident;
-            frame_length = 14 + 9 + username_length + 46;
-            if (*(frame_data + 14 + 5) != 0x03){
-                *(frame_data + 14 + 5) = 0x03;
-            }
-            fprintf(stdout, "[%d]##Protocol: SEND EAP_RESPONSE_IDENTITY_KEEP_ALIVE\n", current_pid);
             break;
         default:
             fprintf(stderr,"&&IMPORTANT: Wrong Send Request Type.%02x\n", send_type);
@@ -418,25 +402,7 @@ get_packet(u_char *args, const struct pcap_pkthdr *header,
 void 
 init_frames()
 {
-    u_char *local_info = malloc(46);
     int data_index;
-
-    /* *  local_info segment used by both RES/Idn and RES/MD5 frame * */
-    data_index = 0;
-    local_info[data_index++] = dhcp_on;
-    memcpy(local_info + data_index, &local_ip, 4);
-    data_index += 4;
-    memcpy(local_info + data_index, &local_mask, 4);
-    data_index += 4;
-    memcpy(local_info + data_index, &local_gateway, 4);
-    data_index += 4;
-    memcpy(local_info + data_index, &local_dns, 4);
-    data_index += 4;
-    char* username_md5 = get_md5_digest(username, username_length);
-    memcpy(local_info + data_index, username_md5, 16);
-    data_index += 16;
-    free(username_md5);
-    strncpy ((char*)local_info + data_index, client_ver, 13);
 
 
     /*****  EAPOL Header  *******/
@@ -450,25 +416,29 @@ init_frames()
     memcpy (eapol_header + data_index, &eapol_t, 2);    /*  frame type, 0x888e*/
 
     /**** EAPol START ****/
-    u_char start_data[4] = {0x01, 0x01, 0x00, 0x00};
+    u_char start_data[] = {0x01, 0x01, 0x00, 0x00};
+    memset (eapol_start, 0xcc, 64);
     memcpy (eapol_start, eapol_header, 14);
     memcpy (eapol_start + 14, start_data, 4);
+    memcpy (eapol_start + 14 + 4, talier_eapol_start, 6);
+
 
     /****EAPol LOGOFF ****/
     u_char logoff_data[4] = {0x01, 0x02, 0x00, 0x00};
+    memset (eapol_logoff, 0xcc, 64);
     memcpy (eapol_logoff, eapol_header, 14);
     memcpy (eapol_logoff + 14, logoff_data, 4);
-
+    memcpy (eapol_logoff + 14 + 4, talier_eapol_start, 4);
 
     /* EAP RESPONSE IDENTITY */
     u_char eap_resp_iden_head[9] = {0x01, 0x00, 
-                                    0x00, 5 + 46 + username_length,  /* eapol_length */
-                                    0x02, 0x01, 
+                                    0x00, 5 + username_length,  /* eapol_length */
+                                    0x02, 0x00, 
                                     0x00, 5 + username_length,       /* eap_length */
                                     0x01};
     
-    eap_response_ident = malloc (14 + 9 + username_length + 46);
-    memset(eap_response_ident, 0, 14 + 9 + username_length + 46);
+    eap_response_ident = malloc (54 + username_length);
+    memset(eap_response_ident, 0xcc, 14 + 9 + username_length + 46);
 
     data_index = 0;
     memcpy (eap_response_ident + data_index, eapol_header, 14);
@@ -476,16 +446,16 @@ init_frames()
     memcpy (eap_response_ident + data_index, eap_resp_iden_head, 9);
     data_index += 9;
     memcpy (eap_response_ident + data_index, username, username_length);
-    data_index += username_length;
-    memcpy (eap_response_ident + data_index, local_info, 46);
 
     /** EAP RESPONSE MD5 Challenge **/
     u_char eap_resp_md5_head[10] = {0x01, 0x00, 
-                                   0x00, 6 + 16 + username_length + 46, /* eapol-length */
-                                   0x02, 0x02, 
+                                   0x00, 6 + 16 + username_length, /* eapol-length */
+                                   0x02, 
+                                   0x00, /* id to be set */
                                    0x00, 6 + 16 + username_length, /* eap-length */
                                    0x04, 0x10};
-    eap_response_md5ch = malloc (14 + 4 + 6 + 16 + username_length + 46);
+    eap_response_md5ch = malloc (14 + 4 + 6 + 16 + username_length + 14);
+    memset(eap_response_md5ch, 0xcc, 14 + 4 + 6 + 16 + username_length + 14);
 
     data_index = 0;
     memcpy (eap_response_md5ch + data_index, eapol_header, 14);
@@ -494,15 +464,17 @@ init_frames()
     data_index += 26;// 剩余16位在收到REQ/MD5报文后由fill_password_md5填充 
     memcpy (eap_response_md5ch + data_index, username, username_length);
     data_index += username_length;
-    memcpy (eap_response_md5ch + data_index, local_info, 46);
+    memcpy (eap_response_md5ch + data_index, version_segment, 4);
+    data_index += 4;
+    memcpy (eap_response_md5ch + data_index, version_segment, 9);
 }
 
 void 
-fill_password_md5(u_char attach_key[])
+fill_password_md5(u_char attach_key[], u_int id)
 {
     char *psw_key = malloc(1 + password_length + 16);
     char *md5_challenge_key;
-    psw_key[0] = 0x02;
+    psw_key[0] = id;
     memcpy (psw_key + 1, password, password_length);
     memcpy (psw_key + 1 + password_length, attach_key, 16);
 
@@ -522,55 +494,7 @@ void init_info()
     }
     username_length = strlen(username);
     password_length = strlen(password);
-/*
-    if (dhcp_on){
-        if (user_ip == NULL){
-            fprintf (stderr,"&&Info:DHCP Modol On with NO IP specified.\n"
-                            "Use default pseudo IP `169.254.216.45'.\n");
-            user_ip = "169.254.216.45";
-        }
-        if (user_mask == NULL) {
-            fprintf (stderr,"&&Info:DHCP Modol On with NO MASK specified.\n"
-                            "Use default MASK `255.255.0.0' .\n");
-            user_mask = "255.255.0.0";
-        }
-    }
-*/
-    if (user_ip)
-        local_ip = inet_addr (user_ip);
-    else 
-        local_ip = 0;
 
-    if (user_mask)
-        local_mask = inet_addr (user_mask);
-    else 
-        local_mask = 0;
-
-    if (user_gateway)
-        local_gateway = inet_addr (user_gateway);
-    else 
-        local_gateway = 0;
-
-    if (user_dns)
-        local_dns = inet_addr (user_dns);
-    else
-        local_dns = 0;
-
-    if (local_ip == -1 || local_mask == -1 || local_gateway == -1 || local_dns == -1) {
-        fprintf (stderr,"ERROR: One of specified IP, MASK, Gateway and DNS address\n"
-                        "in the arguments format error.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    if(client_ver == NULL)
-        client_ver = "3.5.04.1013fk";
-    else{
-        if (strlen (client_ver) > 13) {
-            fprintf (stderr, "Error: Specified client version `%s' longer than 13 Bytes.\n"
-                    "Try `zdclient --help' for more information.\n", client_ver);
-            exit(EXIT_FAILURE);
-        }
-    }
 }
 
 void init_device()
@@ -621,45 +545,6 @@ void init_device()
     }
     memcpy(local_mac, ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
     
-    //尝试获得网卡IP
-    if(ioctl(sock, SIOCGIFADDR, &ifr) < 0)
-    {
-        //获取不了IP
-        if (dhcp_on){ //DHCP模式下
-            use_pseudo_ip = 1; //设置标签
-            fprintf(stdout, "&&Info: No IP attached to %s, use `169.254.216.45' instead.\n",
-                    dev);
-        }
-        else {
-            perror("ioctl");
-            exit(EXIT_FAILURE);
-        }
-    }
-
-    //如果用户同时指定了IP和MASK，则优先使用(已在init_info转换完成)，
-    //否则由程序处理
-    if (!(local_ip && local_mask)) {
-
-        //获取不了IP，且用户没有定义IP，使用伪IP
-        if (use_pseudo_ip) {
-            local_ip = inet_addr ("169.254.216.45");
-            local_mask = inet_addr ("255.255.255.0");
-        }
-
-        //获取到IP，使用网卡的真实IP
-        else {
-            local_ip = ((struct  sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr;
-
-            //获得子网掩码
-            if(ioctl(sock, SIOCGIFNETMASK, &ifr) < 0)
-            {
-                perror("ioctl");
-                exit(EXIT_FAILURE);
-            }
-            local_mask = ((struct sockaddr_in*)&ifr.ifr_netmask)->sin_addr.s_addr;
-        }
-    }
-
 
     /* construct the filter string */
     sprintf(filter_exp, "ether dst %02x:%02x:%02x:%02x:%02x:%02x"
@@ -684,34 +569,6 @@ void init_device()
     pcap_freecode(&fp);
 }
 
-int set_device_new_ip()
-{
-    struct ifreq ifr;
-    int sock;
-    
-    strcpy(ifr.ifr_name, dev);
-    if((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-    {
-        perror("socket");
-        exit(EXIT_FAILURE);
-    }
-    if(ioctl(sock, SIOCGIFADDR, &ifr) < 0)
-    {
-        return -1;
-    }
-    if(ioctl(sock, SIOCGIFNETMASK, &ifr) < 0)
-    {
-        return -1;
-    }
-    local_ip = ((struct  sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr;
-    local_mask = ((struct sockaddr_in*)&ifr.ifr_netmask)->sin_addr.s_addr;
-
-    size_t data_index = 14 + 9 + username_length + 1;
-    memcpy (eap_response_ident + data_index, &local_ip, 4);
-    data_index += 4;
-    memcpy (eap_response_ident + data_index, &local_mask, 4);
-    return 0;
-}
 
 static void
 signal_interrupted (int signo)
@@ -785,18 +642,12 @@ int main(int argc, char **argv)
     signal (SIGINT, signal_interrupted);
     signal (SIGTERM, signal_interrupted);    
 
-    printf("######## ZDClient ver. %s #########\n", ZDC_VER);
+    printf("######## Lenovo Client ver. %s #########\n", LENOVO_VER);
     printf("Device:     %s\n", dev);
     printf("MAC:        ");
     print_hex(local_mac, 6);
-    printf("IP:         %s\n", inet_ntoa(*(struct in_addr*)&local_ip));
-    printf("MASK:       %s\n", inet_ntoa(*(struct in_addr*)&local_mask));
-    printf("Gateway:    %s\n", inet_ntoa(*(struct in_addr*)&local_gateway));
-    printf("DNS:        %s\n", inet_ntoa(*(struct in_addr*)&local_dns));
-    printf("Client ver: %s\n", client_ver);
-    printf("####################################\n");
+    printf("########################################\n");
 
-    send_eap_packet (EAPOL_LOGOFF);
     send_eap_packet (EAPOL_START);
 
 	pcap_loop (handle, -1, get_packet, NULL);   /* main loop */

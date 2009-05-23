@@ -3,15 +3,15 @@ LIBS = -lpcap
 CFLAGS = -Wall -g
 
 .PHONY: all
-all: zdclient
+all: lenovoclient
 
-zdclient	: md5.o zdclient.o
-	$(CC) $(CFLAGS) -o $@ md5.o zdclient.o $(LIBS)
+lenovoclient	: md5.o lenovoclient.o
+	$(CC) $(CFLAGS) -o $@ md5.o lenovoclient.o $(LIBS)
 
 md5.o	: md5.c md5.h
 	$(CC) $(CFLAGS) -c $<
 
-zdclient.o : zdclient.c
+lenovoclient.o : lenovoclient.c
 	$(CC) $(CFLAGS) -c $<
 	
 clean :
