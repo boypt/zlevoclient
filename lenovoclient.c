@@ -325,14 +325,6 @@ action_by_eap_type(enum EAPType pType,
                                         header->eap_ask_id);
             send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
             break;
-        case EAP_REQUEST_IDENTITY_KEEP_ALIVE:
-            if (state == ONLINE){
-                fprintf(stdout, "[%d]##Protocol: REQUEST EAP_REQUEST_IDENTITY_KEEP_ALIVE (%d)\n",
-                                            current_pid,live_count++);
-            }
-
-            send_eap_packet(EAP_RESPONSE_IDENTITY_KEEP_ALIVE);
-            break;
         default:
             return;
     }
@@ -432,7 +424,7 @@ init_frames()
                                     0x01};
     
     eap_response_ident = malloc (54 + username_length);
-    memset(eap_response_ident, 0xcc, 14 + 9 + username_length + 46);
+    memset(eap_response_ident, 54 + username_length);
 
     data_index = 0;
     memcpy (eap_response_ident + data_index, eapol_header, 14);
