@@ -3,7 +3,7 @@
  *
  *       Filename:  zlevoclient.c
  *
- *    Description:  main source file for ZDClient
+ *    Description:  main source file for ZlevoClient
  *
  *        Version:  0.1
  *        Created:  05/24/2009 05:38:56 PM
@@ -37,7 +37,7 @@
 #include "md5.h"
 
 
-/* ZDClient Version */
+/* ZlevoClient Version */
 #define LENOVO_VER "0.1"
 
 /* default snap length (maximum bytes per packet to capture) */
@@ -158,7 +158,7 @@ void
 show_usage()
 {
     printf( "\n"
-            "ZDClient %s \n"
+            "ZlevoClient %s \n"
             "\t  -- Supllicant for DigiChina Authentication.\n"
             "\n"
             "  Usage:\n"
@@ -179,7 +179,7 @@ show_usage()
             "\tThis program is a supplicat program compatible for LENOVO ,\n"
             "\t802.1x EAPOL protocol, which was used for  Internet control.\n"
 
-            "\tZDC Client is a software developed individually, with NO any rela-\n"
+            "\tZlevoClient is a software developed individually, with NO any rela-\n"
             "\tiontship with Lenovo company.\n\n\n"
             
             "\tAnother PT work. Blog: http://apt-blog.co.cc\n"
@@ -240,7 +240,7 @@ action_by_eap_type(enum EAPType pType,
                 background = 0;         /* 防止以后误触发 */
                 pid_t pID = fork();     /* fork至后台，主程序退出 */
                 if (pID != 0) {
-                    fprintf(stdout, "&&Info: ZDClient Forked background with PID: [%d]\n\n", pID);
+                    fprintf(stdout, "&&Info: ZlevoClient Forked background with PID: [%d]\n\n", pID);
                     exit(0);
                 }
             }
