@@ -20,6 +20,51 @@ sudo apt-get install libpcap-dev
 {{{
 make
 }}}
-我们便得到可执行的二进制文件。
+我们便得到可执行的二进制文件zlevoclient。
 
 ==启动脚本==
+在目录中有一个自动运行的脚本，zlevo_run.sh*
+现在假设大家用的是默认版本的ubuntu，系统里面有gedit编辑器：
+{{{
+gedit zlevo_run.sh
+}}}
+很明显大家看到一行
+{{{
+./zlevoclient -u username -p password -b
+}}}
+当然，就是改上你的用户名和密码了，保存。
+
+==运行认证==
+回到终端下面：
+{{{
+sudo ./zlevo_run.sh
+}}}
+恩，会出现一系列的提示，不过完了之后看到类似
+{{{
+&&Info: Authorized Access to Network. 
+&&Info: ZDClient Forked background with PID: [12345]
+}}}
+
+*~~理论上~~现在你就能上网了！*
+
+以后每次都进来这个目录，重复*运行认证*这个步骤，~~才~~就可以上网了！
+
+==能不能简单点==
+
+~~靠，自己想办法啊~~ 
+
+*能！*如果你按上面的步骤已经能用zlevoclient上网了，那么以后“一键上网”也不是什么难事：
+
+首先，把zlevoclient，zlevo_run.sh复制到/usr/local/bin/目录下：
+{{{
+sudo cp zlevoclient zlevo_run.sh /usr/local/bin/
+}}}
+
+然后在桌面新建一个启动器，名称自定，命令里面输入
+{{{
+gksu zlevo_run.sh
+}}}
+
+这样之后每次只需双击这个图标，或者把它拉到面板上面，单击，就出现一个密码窗口，输入密码就可以上网了！
+
+~~什么？你密码都不想输？行！加入到光荣的root敢死队联盟就可以了。~~
