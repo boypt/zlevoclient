@@ -1,5 +1,5 @@
 #labels Phase-Support,Featured
-=ZDC_Client v0.4 Manual=
+=zlevoclient Manual=
 
 ==编译：==
 	编译需要libpcap库，一般Linux发行版里面安装libpcap-dev包即可，如ubuntu： 
