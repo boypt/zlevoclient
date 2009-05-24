@@ -59,8 +59,12 @@ sudo ./zlevo_run.sh
 {{{
 sudo cp zlevoclient zlevo_run.sh /usr/local/bin/
 }}}
+然后编辑zlevo_run.sh，在./zlevoclient -u username -p password -b之前添加一行：
+{{{
+cd /usr/local/bin/
+}}}
 
-然后在桌面新建一个启动器，名称自定，命令里面输入
+最后在桌面新建一个启动器，名称自定，命令里面输入
 {{{
 gksu zlevo_run.sh
 }}}
@@ -68,3 +72,10 @@ gksu zlevo_run.sh
 这样之后每次只需双击这个图标，或者把它拉到面板上面，单击，就出现一个密码窗口，输入密码就可以上网了！
 
 ~~什么？你密码都不想输？行！加入到光荣的root敢死队联盟就可以了。~~
+
+==开机自启动==
+在/etc/rc.local中添加如下一行：
+{{{
+/usr/local/bin/zlevo_run.sh
+}}}
+前提是您已经按照上面的方法配置好。
