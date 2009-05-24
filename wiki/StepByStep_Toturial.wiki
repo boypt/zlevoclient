@@ -21,3 +21,5 @@ sudo apt-get install libpcap-dev
 make
 }}}
 我们便得到可执行的二进制文件。
+
+==启动脚本==
