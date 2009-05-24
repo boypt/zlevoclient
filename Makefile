@@ -3,15 +3,15 @@ LIBS = -lpcap -lpthread
 CFLAGS = -Wall -g
 
 .PHONY: all
-all: lenovoclient
+all: zlevoclient
 
-lenovoclient	: md5.o lenovoclient.o
-	$(CC) $(CFLAGS) -o $@ md5.o lenovoclient.o $(LIBS)
+zlevoclient	: md5.o zlevoclient.o
+	$(CC) $(CFLAGS) -o $@ md5.o zlevoclient.o $(LIBS)
 
 md5.o	: md5.c md5.h
 	$(CC) $(CFLAGS) -c $<
 
-lenovoclient.o : lenovoclient.c
+zlevoclient.o : zlevoclient.c
 	$(CC) $(CFLAGS) -c $<
 	
 clean :
