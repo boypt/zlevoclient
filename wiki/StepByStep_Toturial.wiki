@@ -4,4 +4,20 @@
 = zlevoclient 使用教程 =
 
 ==下载解压==
+从[http://code.google.com/p/zlevoclient/ 项目主页]下载最新的源代码，下面以
+zlevoclient_0.1-src.tar.gz为例：
+{{{
+tar xvf zlevoclient_0.1-src.tar.gz
+cd  zlevoclient
+}}}
 
+==编译==
+编译需要libpcap库，一般Linux发行版里面安装libpcap包即可，在ubuntu中： 
+{{{
+sudo apt-get install libpcap-dev
+}}}
+进入源代码所在的目录：
+{{{
+make
+}}}
+我们便得到可执行的二进制文件。
