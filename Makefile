@@ -15,4 +15,4 @@ zlevoclient.o : zlevoclient.c
 	$(CC) $(CFLAGS) -c $<
 	
 clean :
-	rm -v *.o
+	rm -v *.o zlevoclient

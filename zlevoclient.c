@@ -140,7 +140,7 @@ u_char      *eap_response_md5ch = NULL; /* EAP RESPON/MD5 报文 */
 u_int       live_count = 0;             /* KEEP ALIVE 报文的计数值 */
 pid_t       current_pid = 0;            /* 记录后台进程的pid */
 
-pthread_t   live_keeper_id;
+pthread_t   live_keeper_id = 0;
 
 
 // debug function
@@ -244,7 +244,15 @@ action_by_eap_type(enum EAPType pType,
                     exit(0);
                 }
             }
-            pthread_create(&live_keeper_id, NULL, keep_alive, NULL);
+            if (live_keeper_id) {
+                fprintf(stdout, "@@Fatal ERROR: thread creation.\n");
+                exit (EXIT_FAILURE);
+            }
+            if ( pthread_create(&live_keeper_id, NULL, 
+                                    keep_alive, NULL) != 0 ){
+                fprintf(stdout, "@@Fatal ERROR: Init Live keep thread failure.\n");
+                exit (EXIT_FAILURE);
+            }
             current_pid = getpid();     /* 取得当前进程PID */
             break;
         case EAP_FAILURE:
