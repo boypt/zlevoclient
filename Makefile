@@ -1,5 +1,5 @@
 CC = gcc
-LIBS = -lpcap
+LIBS = -lpcap -lpthread
 CFLAGS = -Wall -g
 
 .PHONY: all

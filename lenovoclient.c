@@ -37,7 +37,7 @@
 #include <unistd.h>
 #include "md5.h"
 
-#include <assert.h>
+#include <pthread.h>
 
 /* ZDClient Version */
 #define LENOVO_VER "0.1"
@@ -100,12 +100,13 @@ void    init_info();
 void    init_device();
 void    init_arguments(int argc, char **argv);
 int     set_device_new_ip();
-void    fill_password_md5(u_char attach_key[], u_int id);
+void    fill_password_md5(u_char *attach_key, u_int id);
 
 
 static void signal_interrupted (int signo);
 static void get_packet(u_char *args, const struct pcap_pkthdr *header, 
                         const u_char *packet);
+void* keep_alive(void *arg);
 
 
 u_char version_segment[] = {0x0a, 0x0b, 0x18, 0x2d};
@@ -114,7 +115,7 @@ u_char talier_eap_md5_resp[] = {0x00, 0x00, 0x2f, 0xfc, 0x00, 0x03, 0x01, 0x01, 
 //u_char talier_eap_
 
 char        errbuf[PCAP_ERRBUF_SIZE];  /* error buffer */
-enum STATE  state;                     /* program state */
+enum STATE  state = READY;                     /* program state */
 pcap_t      *handle = NULL;			   /* packet capture handle */
 
 int         dhcp_on = 0;               /* DHCP 模式标记 */
@@ -147,6 +148,7 @@ u_char      muticast_mac[] =            /* 802.1x的认证服务器多播地址 
 
 u_char      eapol_start[64];            /* EAPOL START报文 */
 u_char      eapol_logoff[64];           /* EAPOL LogOff报文 */
+u_char      eapol_keepalive[64];
 u_char      *eap_response_ident = NULL; /* EAP RESPON/IDENTITY报文 */
 u_char      *eap_response_md5ch = NULL; /* EAP RESPON/MD5 报文 */
 
@@ -155,6 +157,7 @@ pid_t       current_pid = 0;            /* 记录后台进程的pid */
 
 int         use_pseudo_ip = 0;          /* DHCP模式网卡无IP情况下使用伪IP的标志 */
 
+pthread_t   live_keeper_id;
 
 /* Option struct for progrm run arguments */
 static struct option long_options[] =
@@ -296,9 +299,14 @@ action_by_eap_type(enum EAPType pType,
                     exit(0);
                 }
             }
+            pthread_create(&live_keeper_id, NULL, keep_alive, NULL);
             current_pid = getpid();     /* 取得当前进程PID */
             break;
         case EAP_FAILURE:
+            if (state == READY) {
+                fprintf(stdout, "##Protocol: Init Logoff Signal\n");
+                return;
+            }
             state = READY;
             fprintf(stdout, "##Protocol: EAP_FAILURE\n");
             if(state == ONLINE){
@@ -358,10 +366,17 @@ send_eap_packet(enum EAPType send_type)
             frame_length = 40 + username_length + 14;
             fprintf(stdout, "##Protocol: SEND EAP-Response/Md5-Challenge\n");
             break;
+        case EAP_RESPONSE_IDENTITY_KEEP_ALIVE:
+            frame_data = eapol_keepalive;
+            frame_length = 64;
+            fprintf(stdout, "[%d]##Protocol: SEND EAPOL Keep Alive\n", current_pid);
+            break;
         default:
             fprintf(stderr,"&&IMPORTANT: Wrong Send Request Type.%02x\n", send_type);
             return;
     }
+    printf ("@@DEBUG: Sent Frame Data:\n");
+    print_hex (frame_data, frame_length);
     if (pcap_sendpacket(handle, frame_data, frame_length) != 0)
     {
         fprintf(stderr,"&&IMPORTANT: Error Sending the packet: %s\n", pcap_geterr(handle));
@@ -416,6 +431,15 @@ init_frames()
     memcpy (eapol_logoff + 14, logoff_data, 4);
     memcpy (eapol_logoff + 14 + 4, talier_eapol_start, 4);
 
+    u_char keep_data[4] = {0x01, 0xfc, 0x00, 0x0c};
+    memset (eapol_keepalive, 0xcc, 64);
+    memcpy (eapol_keepalive, eapol_header, 14);
+    memcpy (eapol_keepalive + 14, keep_data, 4);
+    memset (eapol_keepalive + 18, 0, 8);
+    memcpy (eapol_keepalive + 26, version_segment, 4);
+    
+
+
     /* EAP RESPONSE IDENTITY */
     u_char eap_resp_iden_head[9] = {0x01, 0x00, 
                                     0x00, 5 + username_length,  /* eapol_length */
@@ -424,7 +448,7 @@ init_frames()
                                     0x01};
     
     eap_response_ident = malloc (54 + username_length);
-    memset(eap_response_ident, 54 + username_length);
+    memset(eap_response_ident, 0xcc, 54 + username_length);
 
     data_index = 0;
     memcpy (eap_response_ident + data_index, eapol_header, 14);
@@ -456,7 +480,7 @@ init_frames()
 }
 
 void 
-fill_password_md5(u_char attach_key[], u_int id)
+fill_password_md5(u_char *attach_key, u_int id)
 {
     char *psw_key = malloc(1 + password_length + 16);
     char *md5_challenge_key;
@@ -464,7 +488,15 @@ fill_password_md5(u_char attach_key[], u_int id)
     memcpy (psw_key + 1, password, password_length);
     memcpy (psw_key + 1 + password_length, attach_key, 16);
 
+//    printf("@@DEBUG: MD5-KEY:\n");
+//    print_hex (psw_key, 1 + password_length + 16);
+
     md5_challenge_key = get_md5_digest(psw_key, 1 + password_length + 16);
+
+//    printf("@@DEBUG: MD5-Challenge:\n");
+//    print_hex (md5_challenge_key, 16);
+
+    memset (eap_response_md5ch + 14 + 5, id, 1);
     memcpy (eap_response_md5ch + 14 + 10, md5_challenge_key, 16);
 
     free (psw_key);
@@ -618,6 +650,17 @@ void init_arguments(int argc, char **argv)
     }    
 }
 
+void* keep_alive(void *arg)
+{
+    u_int second = 0;
+    while (1) {
+        if (!(second++ % 60)){
+            send_eap_packet (EAP_RESPONSE_IDENTITY_KEEP_ALIVE);
+        }
+        sleep (1);
+    }
+}
+
 int main(int argc, char **argv)
 {
     init_arguments (argc, argv);
@@ -634,12 +677,13 @@ int main(int argc, char **argv)
     print_hex(local_mac, 6);
     printf("########################################\n");
 
+    send_eap_packet (EAPOL_LOGOFF);
     send_eap_packet (EAPOL_START);
 
 	pcap_loop (handle, -1, get_packet, NULL);   /* main loop */
 	pcap_close (handle);
     free (eap_response_ident);
     free (eap_response_md5ch);
-    return 0;
+    return EXIT_SUCCESS;
 }
 
