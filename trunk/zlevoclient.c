@@ -1,12 +1,12 @@
 /*
  * =====================================================================================
  *
- *       Filename:  zdclient.c
+ *       Filename:  zlevoclient.c
  *
  *    Description:  main source file for ZDClient
  *
- *        Version:  0.2
- *        Created:  05/17/2009 05:38:56 PM
+ *        Version:  0.1
+ *        Created:  05/24/2009 05:38:56 PM
  *       Revision:  none
  *       Compiler:  gcc
  *
@@ -24,20 +24,18 @@
 #include <ctype.h>
 #include <errno.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
 #include <sys/ioctl.h>
 
 #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <net/if.h>
 
+#include <pthread.h>
 #include <signal.h>
 #include <getopt.h>
 #include <unistd.h>
+
 #include "md5.h"
 
-#include <pthread.h>
 
 /* ZDClient Version */
 #define LENOVO_VER "0.1"
@@ -112,13 +110,11 @@ void* keep_alive(void *arg);
 u_char version_segment[] = {0x0a, 0x0b, 0x18, 0x2d};
 u_char talier_eapol_start[] = {0x00, 0x00, 0x2f, 0xfc, 0x03, 0x00};
 u_char talier_eap_md5_resp[] = {0x00, 0x00, 0x2f, 0xfc, 0x00, 0x03, 0x01, 0x01, 0x00};
-//u_char talier_eap_
 
 char        errbuf[PCAP_ERRBUF_SIZE];  /* error buffer */
 enum STATE  state = READY;                     /* program state */
 pcap_t      *handle = NULL;			   /* packet capture handle */
 
-int         dhcp_on = 0;               /* DHCP 模式标记 */
 int         background = 0;            /* 后台运行标记  */     
 char        *dev = NULL;               /* 连接的设备名 */
 char        *username = NULL;          
@@ -127,18 +123,7 @@ char        *password = NULL;
 int         username_length;
 int         password_length;
 
-char        *user_gateway = NULL;      /* 由用户设定的四个报文参数 */
-char        *user_dns = NULL;
-char        *user_ip = NULL;
-char        *user_mask = NULL;
 
-//int         specfied_ip;
-//int         specfied_mask;
-
-u_int       local_ip;			       /* 网卡IP，网络序，下同 */
-u_int       local_mask;			       /* subnet mask */
-u_int       local_gateway = -1;
-u_int       local_dns = -1;
 u_char      local_mac[ETHER_ADDR_LEN]; /* MAC地址 */
 
 char        *client_ver = NULL;         /* 报文协议版本号 */
@@ -155,26 +140,8 @@ u_char      *eap_response_md5ch = NULL; /* EAP RESPON/MD5 报文 */
 u_int       live_count = 0;             /* KEEP ALIVE 报文的计数值 */
 pid_t       current_pid = 0;            /* 记录后台进程的pid */
 
-int         use_pseudo_ip = 0;          /* DHCP模式网卡无IP情况下使用伪IP的标志 */
-
 pthread_t   live_keeper_id;
 
-/* Option struct for progrm run arguments */
-static struct option long_options[] =
-    {
-    {"help",        no_argument,        0,              'h'},
-    {"background",  no_argument,        &background,    1},
-    {"dhcp",        no_argument,        &dhcp_on,       1},
-    {"device",      required_argument,  0,              2},
-    {"ver",         required_argument,  0,              3},
-    {"username",    required_argument,  0,              'u'},
-    {"password",    required_argument,  0,              'p'},
-    {"ip",          required_argument,  0,              4},
-    {"mask",        required_argument,  0,              5},
-    {"gateway",     required_argument,  0,              'g'},
-    {"dns",         required_argument,  0,              'd'},
-    {0, 0, 0, 0}
-    };
 
 // debug function
 void 
@@ -201,44 +168,22 @@ show_usage()
             "\t-p, --password           Your password.\n"
             "\n"
             "  Optional Arguments:\n\n"
-            "\t-g, --gateway         Specify Gateway server address. \n\n"
-
-            "\t-d, --dns             Specify DNS server address. \n\n"
-
             "\t--device              Specify which device to use.\n"
             "\t                      Default is usually eth0.\n\n"
 
-            "\t--dhcp                Use DHCP mode if your ISP requests.\n"
-            "\t                      You may need to run `dhclient' manualy to\n"
-            "\t                      renew your IP address after successful \n"
-            "\t                      authentication.\n\n"
-
-            "\t--ip                  With DHCP mode on, program need to send \n"
-            "\t--mask                packet to the server with an IP and MASK, use \n"
-            "\t                      this arguments to specify them, or program will\n"
-            "\t                      use a pseudo one.  Affacts only when both promoted.\n\n"
-
             "\t-b, --background      Program fork to background after authentication.\n\n"
-
-            "\t--ver                 Specify a client version. \n"
-            "\t                      Default is `3.5.04.1013fk'.\n"
-            "\t                      Other known versions are:\n"
-            "\t                      `3.5.04.1110fk', `3.5.04.0324', \n"
-            "\t                      `3.4.2006.1027', `3.4.2006.1229', \n"
-            "\t                      `3.4.2006.0220'\n"
-            "\t                      NO longer than 13 Bytes allowed.\n\n"
 
             "\t-h, --help            Show this help.\n\n"
             "\n"
-            "  About ZDClient:\n\n"
-            "\tThis program is a C implementation to DigiChina Authentication,\n"
-            "\twith a simple goal of replacing a Java `scut_supplicant' by Yaoqi.\n\n"
+            "  About ZlevoClient:\n\n"
+            "\tThis program is a supplicat program compatible for LENOVO ,\n"
+            "\t802.1x EAPOL protocol, which was used for  Internet control.\n"
 
             "\tZDC Client is a software developed individually, with NO any rela-\n"
-            "\tiontship with Digital China company.\n\n\n"
+            "\tiontship with Lenovo company.\n\n\n"
             
             "\tAnother PT work. Blog: http://apt-blog.co.cc\n"
-            "\t\t\t\t\t\t\t\t2009.05.22\n",
+            "\t\t\t\t\t\t\t\t2009.05.24\n",
             LENOVO_VER);
 }
 
@@ -598,12 +543,23 @@ signal_interrupted (int signo)
 
 void init_arguments(int argc, char **argv)
 {
+    /* Option struct for progrm run arguments */
+    struct option long_options[] =
+        {
+        {"help",        no_argument,        0,              'h'},
+        {"background",  no_argument,        &background,    1},
+        {"device",      required_argument,  0,              2},
+        {"username",    required_argument,  0,              'u'},
+        {"password",    required_argument,  0,              'p'},
+        {0, 0, 0, 0}
+        };
+
     int c;
     while (1) {
 
         /* getopt_long stores the option index here. */
         int option_index = 0;
-        c = getopt_long (argc, argv, "u:p:g:d:hb",
+        c = getopt_long (argc, argv, "u:p:hb",
                         long_options, &option_index);
         if (c == -1)
             break;
@@ -616,23 +572,11 @@ void init_arguments(int argc, char **argv)
             case 2:
                 dev = optarg;
                 break;
-            case 4:
-                user_ip = optarg;
-                break;
-            case 5:
-                user_mask = optarg;
-                break;
             case 'u':
                 username = optarg;
                 break;
             case 'p':
                 password = optarg;
-                break;
-            case 'g':
-                user_gateway = optarg;
-                break;
-            case 'd':
-                user_dns = optarg;
                 break;
             case 'h':
                 show_usage();
