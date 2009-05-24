@@ -328,8 +328,8 @@ send_eap_packet(enum EAPType send_type)
             fprintf(stderr,"&&IMPORTANT: Wrong Send Request Type.%02x\n", send_type);
             return;
     }
-    printf ("@@DEBUG: Sent Frame Data:\n");
-    print_hex (frame_data, frame_length);
+//    printf ("@@DEBUG: Sent Frame Data:\n");
+//    print_hex (frame_data, frame_length);
     if (pcap_sendpacket(handle, frame_data, frame_length) != 0)
     {
         fprintf(stderr,"&&IMPORTANT: Error Sending the packet: %s\n", pcap_geterr(handle));
