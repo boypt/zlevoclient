@@ -460,7 +460,7 @@ void init_info()
 {
     if(username == NULL || password == NULL){
         fprintf (stderr,"Error: NO Username or Password promoted.\n"
-                        "Try zdclient --help for usage.\n");
+                        "Try zlevoclient --help for usage.\n");
         exit(EXIT_FAILURE);
     }
     username_length = strlen(username);
