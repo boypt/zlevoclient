@@ -690,7 +690,7 @@ int main(int argc, char **argv)
     print_hex(local_mac, 6);
     printf("########################################\n");
 
-    send_eap_packet (EAPOL_LOGOFF);
+//    send_eap_packet (EAPOL_LOGOFF);
     send_eap_packet (EAPOL_START);
 
 	pcap_loop (handle, -1, get_packet, NULL);   /* main loop */
