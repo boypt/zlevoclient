@@ -38,7 +38,7 @@
 
 
 /* ZlevoClient Version */
-#define LENOVO_VER "0.2"
+#define LENOVO_VER "0.3"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
@@ -138,14 +138,15 @@ u_char      *eap_response_ident = NULL; /* EAP RESPON/IDENTITY报文 */
 u_char      *eap_response_md5ch = NULL; /* EAP RESPON/MD5 报文 */
 
 u_int       live_count = 0;             /* KEEP ALIVE 报文的计数值 */
-pid_t       current_pid = 0;            /* 记录后台进程的pid */
+//pid_t       current_pid = 0;            /* 记录后台进程的pid */
 
 pthread_t   live_keeper_id;
 int         exit_flag = 0;
+int         debug_on = 0;
 
 // debug function
 void 
-print_hex(u_char *array, int count)
+print_hex(const u_char *array, int count)
 {
     int i;
     for(i = 0; i < count; i++){
@@ -173,6 +174,7 @@ show_usage()
 
             "\t-b, --background      Program fork to background after authentication.\n\n"
             "\t-l                    Tell the process to Logoff.\n\n"
+            "\t--debug               Show debug message.\n\n"
             "\t-h, --help            Show this help.\n\n"
             "\n"
             "  About ZlevoClient:\n\n"
@@ -253,7 +255,7 @@ action_by_eap_type(enum EAPType pType,
                 fprintf(stdout, "@@Fatal ERROR: Init Live keep thread failure.\n");
                 exit (EXIT_FAILURE);
             }
-            current_pid = getpid();     /* 取得当前进程PID */
+//            current_pid = getpid();     /* 取得当前进程PID */
             break;
         case EAP_FAILURE:
             if (state == READY) {
@@ -322,14 +324,16 @@ send_eap_packet(enum EAPType send_type)
         case EAP_RESPONSE_IDENTITY_KEEP_ALIVE:
             frame_data = eapol_keepalive;
             frame_length = 64;
-            fprintf(stdout, "[%d]##Protocol: SEND EAPOL Keep Alive\n", current_pid);
+            fprintf(stdout, "##Protocol: SEND EAPOL Keep Alive\n");
             break;
         default:
             fprintf(stderr,"&&IMPORTANT: Wrong Send Request Type.%02x\n", send_type);
             return;
     }
-//    printf ("@@DEBUG: Sent Frame Data:\n");
-//    print_hex (frame_data, frame_length);
+    if (debug_on){
+        printf ("@@DEBUG: Sent Frame Data:\n");
+        print_hex (frame_data, frame_length);
+    }
     if (pcap_sendpacket(handle, frame_data, frame_length) != 0)
     {
         fprintf(stderr,"&&IMPORTANT: Error Sending the packet: %s\n", pcap_geterr(handle));
@@ -351,6 +355,12 @@ get_packet(u_char *args, const struct pcap_pkthdr *header,
 
     enum EAPType p_type = get_eap_type(eap_header);
     action_by_eap_type(p_type, eap_header);
+
+    if (debug_on){
+        printf ("@@DEBUG: Packet Caputre Data:\n");
+        print_hex (packet, 64);
+    }
+
     return;
 }
 
@@ -441,8 +451,10 @@ fill_password_md5(u_char *attach_key, u_int id)
     memcpy (psw_key + 1, password, password_length);
     memcpy (psw_key + 1 + password_length, attach_key, 16);
 
-//    printf("@@DEBUG: MD5-KEY:\n");
-//    print_hex (psw_key, 1 + password_length + 16);
+    if (debug_on){
+        printf("@@DEBUG: MD5-Attach-KEY:\n");
+        print_hex ((u_char*)psw_key, 1 + password_length + 16);
+    }
 
     md5_challenge_key = get_md5_digest(psw_key, 1 + password_length + 16);
 
@@ -559,6 +571,7 @@ void init_arguments(int argc, char **argv)
         {"device",      required_argument,  0,              2},
         {"username",    required_argument,  0,              'u'},
         {"password",    required_argument,  0,              'p'},
+        {"debug",       no_argument,        &debug_on,      'd'},
         {0, 0, 0, 0}
         };
 
@@ -663,6 +676,7 @@ int main(int argc, char **argv)
 {
     init_arguments (argc, argv);
     program_unique_check (argv[0]);
+
     init_info();
     init_device();
     init_frames ();
