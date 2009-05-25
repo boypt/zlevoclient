@@ -439,7 +439,7 @@ init_frames()
     data_index += username_length;
     memcpy (eap_response_md5ch + data_index, version_segment, 4);
     data_index += 4;
-    memcpy (eap_response_md5ch + data_index, version_segment, 9);
+    memcpy (eap_response_md5ch + data_index, talier_eap_md5_resp, 9);
 }
 
 void 
