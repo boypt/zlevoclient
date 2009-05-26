@@ -36,10 +36,10 @@
 
 #include <iconv.h>
 #include "md5.h"
-
+#include <arpa/inet.h>
 
 /* ZlevoClient Version */
-#define LENOVO_VER "0.3"
+#define LENOVO_VER "0.4"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
@@ -111,7 +111,7 @@ int code_convert(char *from_charset, char *to_charset,
 void print_server_info (const u_char *str);
 
 
-u_char version_segment[] = {0x0a, 0x0b, 0x18, 0x2d};
+//u_char local_ip[] = {0x0a, 0x0b, 0x18, 0x2d};
 u_char talier_eapol_start[] = {0x00, 0x00, 0x2f, 0xfc, 0x03, 0x00};
 u_char talier_eap_md5_resp[] = {0x00, 0x00, 0x2f, 0xfc, 0x00, 0x03, 0x01, 0x01, 0x00};
 
@@ -127,6 +127,7 @@ char        *password = NULL;
 int         username_length;
 int         password_length;
 
+u_int       local_ip = 0;
 
 u_char      local_mac[ETHER_ADDR_LEN]; /* MAC地址 */
 
@@ -434,12 +435,13 @@ init_frames()
     memcpy (eapol_logoff + 14, logoff_data, 4);
     memcpy (eapol_logoff + 14 + 4, talier_eapol_start, 4);
 
+    /****EAPol Keep alive ****/
     u_char keep_data[4] = {0x01, 0xfc, 0x00, 0x0c};
     memset (eapol_keepalive, 0xcc, 64);
     memcpy (eapol_keepalive, eapol_header, 14);
     memcpy (eapol_keepalive + 14, keep_data, 4);
     memset (eapol_keepalive + 18, 0, 8);
-    memcpy (eapol_keepalive + 26, version_segment, 4);
+    memcpy (eapol_keepalive + 26, &local_ip, 4);
     
 
 
@@ -477,7 +479,7 @@ init_frames()
     data_index += 26;// 剩余16位在收到REQ/MD5报文后由fill_password_md5填充 
     memcpy (eap_response_md5ch + data_index, username, username_length);
     data_index += username_length;
-    memcpy (eap_response_md5ch + data_index, version_segment, 4);
+    memcpy (eap_response_md5ch + data_index, &local_ip, 4);
     data_index += 4;
     memcpy (eap_response_md5ch + data_index, talier_eap_md5_resp, 9);
 }
@@ -567,7 +569,14 @@ void init_device()
         exit(EXIT_FAILURE);
     }
     memcpy(local_mac, ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
-    
+
+    if(ioctl(sock, SIOCGIFADDR, &ifr) < 0)
+    {
+        perror("ioctl");
+        exit(EXIT_FAILURE);
+    }
+    local_ip = ((struct  sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr;
+
 
     /* construct the filter string */
     sprintf(filter_exp, "ether dst %02x:%02x:%02x:%02x:%02x:%02x"
@@ -597,7 +606,7 @@ static void
 signal_interrupted (int signo)
 {
     fprintf(stdout,"\n&&Info: USER Interrupted. \n");
-    send_eap_packet(EAPOL_LOGOFF);
+//    send_eap_packet(EAPOL_LOGOFF);
     pcap_breakloop (handle);
 }
 
@@ -728,13 +737,16 @@ int main(int argc, char **argv)
     printf("Device:     %s\n", dev);
     printf("MAC:        ");
     print_hex(local_mac, 6);
+    printf("IP:         %s\n", inet_ntoa(*(struct in_addr*)&local_ip));
     printf("########################################\n");
 
 //    send_eap_packet (EAPOL_LOGOFF);
     send_eap_packet (EAPOL_START);
 
 	pcap_loop (handle, -1, get_packet, NULL);   /* main loop */
+
     send_eap_packet (EAPOL_LOGOFF);
+
 	pcap_close (handle);
     free (eap_response_ident);
     free (eap_response_md5ch);
