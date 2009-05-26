@@ -34,6 +34,7 @@
 #include <getopt.h>
 #include <unistd.h>
 
+#include <iconv.h>
 #include "md5.h"
 
 
@@ -64,7 +65,7 @@ struct sniff_eap_header {
     u_short eap_length;
     u_char eap_op;
     u_char eap_v_length;
-    u_char eap_md5_challenge[16];
+    u_char eap_info_tailer[40];
 };
 
 enum EAPType {
@@ -105,6 +106,9 @@ static void signal_interrupted (int signo);
 static void get_packet(u_char *args, const struct pcap_pkthdr *header, 
                         const u_char *packet);
 void* keep_alive(void *arg);
+int code_convert(char *from_charset, char *to_charset,
+             char *inbuf, size_t inlen, char *outbuf, size_t outlen);
+void print_server_info (const u_char *str);
 
 
 u_char version_segment[] = {0x0a, 0x0b, 0x18, 0x2d};
@@ -153,6 +157,41 @@ print_hex(const u_char *array, int count)
         printf("%02x ", array[i]);
     }
     printf("\n");
+}
+
+int 
+code_convert(char *from_charset, char *to_charset,
+             char *inbuf, size_t inlen, char *outbuf, size_t outlen)
+{
+    iconv_t cd;
+    char **pin = &inbuf;
+    char **pout = &outbuf;
+
+    cd = iconv_open(to_charset,from_charset);
+
+    if (cd==0) 
+      return -1;
+    memset(outbuf,0,outlen);
+
+    if (iconv(cd, pin, &inlen, pout, &outlen)==-1) 
+      return -1;
+    iconv_close(cd);
+    return 0;
+}
+
+void 
+print_server_info (const u_char *str)
+{
+    if (!(str[0] == 0x2f && str[1] == 0xfc)) 
+        return;
+
+    char info_str [200] = {0};
+    int length = str[2];
+    if (code_convert ("gb2312", "utf-8", (char*)str + 3, length, info_str, 200) != 0){
+        fprintf (stderr, "@@Error: Server info convert error.\n");
+        return;
+    }
+    fprintf (stderr, "@@Server Info: %s", info_str);
 }
 
 void
@@ -273,6 +312,7 @@ action_by_eap_type(enum EAPType pType,
             if (state == ID_AUTHED){
                 fprintf(stdout, "&&Info: Invalid Password.\n");
             }
+            print_server_info (header->eap_info_tailer);
             pcap_breakloop (handle);
             break;
         case EAP_REQUEST_IDENTITY:
@@ -284,7 +324,7 @@ action_by_eap_type(enum EAPType pType,
         case EAP_REQUETS_MD5_CHALLENGE:
             state = ID_AUTHED;
             fprintf(stdout, "##Protocol: REQUEST MD5-Challenge(PASSWORD)\n");
-            fill_password_md5((u_char*)header->eap_md5_challenge, 
+            fill_password_md5((u_char*)header->eap_info_tailer, 
                                         header->eap_ask_id);
             send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
             break;
