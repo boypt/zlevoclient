@@ -191,7 +191,7 @@ print_server_info (const u_char *str)
         fprintf (stderr, "@@Error: Server info convert error.\n");
         return;
     }
-    fprintf (stderr, "@@Server Info: %s", info_str);
+    fprintf (stderr, "@@Server Info: %s\n", info_str);
 }
 
 void
