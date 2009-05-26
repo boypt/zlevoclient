@@ -734,6 +734,7 @@ int main(int argc, char **argv)
     send_eap_packet (EAPOL_START);
 
 	pcap_loop (handle, -1, get_packet, NULL);   /* main loop */
+    send_eap_packet (EAPOL_LOGOFF);
 	pcap_close (handle);
     free (eap_response_ident);
     free (eap_response_md5ch);
