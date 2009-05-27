@@ -39,7 +39,7 @@
 #include <arpa/inet.h>
 
 /* ZlevoClient Version */
-#define LENOVO_VER "0.5"
+#define LENOVO_VER "0.6"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
@@ -61,7 +61,7 @@ struct sniff_eap_header {
     u_char eapol_t;
     u_short eapol_length;
     u_char eap_t;
-    u_char eap_ask_id;
+    u_char eap_id;
     u_short eap_length;
     u_char eap_op;
     u_char eap_v_length;
@@ -255,16 +255,16 @@ get_eap_type(const struct sniff_eap_header *eap_header)
                     return EAP_REQUETS_MD5_CHALLENGE;
             break;
         case 0x03:
-        //    if (eap_header->eap_ask_id == 0x02)
+        //    if (eap_header->eap_id == 0x02)
             return EAP_SUCCESS;
             break;
         case 0x04:
             return EAP_FAILURE;
     }
     fprintf (stderr, "&&IMPORTANT: Unknown Package : eap_t:      %02x\n"
-                    "                               eap_ask_id: %02x\n"
+                    "                               eap_id: %02x\n"
                     "                               eap_op:     %02x\n", 
-                    eap_header->eap_t, eap_header->eap_ask_id,
+                    eap_header->eap_t, eap_header->eap_id,
                     eap_header->eap_op);
     return ERROR;
 }
@@ -320,13 +320,14 @@ action_by_eap_type(enum EAPType pType,
             if (state == STARTED){
                 fprintf(stdout, "##Protocol: REQUEST EAP-Identity\n");
             }
+            memset (eap_response_ident + 5, header->eap_id, 1);
             send_eap_packet(EAP_RESPONSE_IDENTITY);
             break;
         case EAP_REQUETS_MD5_CHALLENGE:
             state = ID_AUTHED;
             fprintf(stdout, "##Protocol: REQUEST MD5-Challenge(PASSWORD)\n");
             fill_password_md5((u_char*)header->eap_info_tailer, 
-                                        header->eap_ask_id);
+                                        header->eap_id);
             send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
             break;
         default:
@@ -394,13 +395,13 @@ get_packet(u_char *args, const struct pcap_pkthdr *header,
     ethernet = (struct sniff_ethernet*)(packet);
     eap_header = (struct sniff_eap_header *)(packet + SIZE_ETHERNET);
 
-    enum EAPType p_type = get_eap_type(eap_header);
-    action_by_eap_type(p_type, eap_header);
-
     if (debug_on){
         printf ("@@DEBUG: Packet Caputre Data:\n");
         print_hex (packet, 64);
     }
+
+    enum EAPType p_type = get_eap_type(eap_header);
+    action_by_eap_type(p_type, eap_header);
 
     return;
 }
