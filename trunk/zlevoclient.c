@@ -320,7 +320,7 @@ action_by_eap_type(enum EAPType pType,
             if (state == STARTED){
                 fprintf(stdout, "##Protocol: REQUEST EAP-Identity\n");
             }
-            memset (eap_response_ident + 5, header->eap_id, 1);
+            memset (eap_response_ident + 14 + 5, header->eap_id, 1);
             send_eap_packet(EAP_RESPONSE_IDENTITY);
             break;
         case EAP_REQUETS_MD5_CHALLENGE:
