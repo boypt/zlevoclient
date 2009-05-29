@@ -287,15 +287,15 @@ action_by_eap_type(enum EAPType pType,
                 }
             }
             if ( !live_keeper_id ) {
-				if ( pthread_create(&live_keeper_id, NULL, 
-										keep_alive, NULL) != 0 ){
-					fprintf(stderr, "@@Fatal ERROR: Init Live keep thread failure.\n");
-					exit (EXIT_FAILURE);
-				}
-			}
-			else {
-				fprintf(stdout, "&&Info: ZlevoClient Keeper thread already started. \n");
-			}
+                if ( pthread_create(&live_keeper_id, NULL, 
+                                            keep_alive, NULL) != 0 ){
+                    fprintf(stderr, "@@Fatal ERROR: Init Live keep thread failure.\n");
+                    exit (EXIT_FAILURE);
+                }
+            }
+            else {
+                fprintf(stdout, "&&Info: ZlevoClient Keeper thread already started. \n");
+            }
             break;
         case EAP_FAILURE:
             if (state == READY) {
