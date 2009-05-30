@@ -726,7 +726,16 @@ program_running_check()
         if(errno == EACCES || errno == EAGAIN){
             read (fd, buf, 16);
             close(fd);
-            return atoi (buf);
+
+            int inst_pid = atoi (buf);
+            if (exit_flag) {
+                if ( kill (inst_pid, SIGINT) == -1 ) {
+                                perror("kill");
+                                exit(EXIT_FAILURE);
+                }
+                exit (EXIT_SUCCESS);
+            }
+            return inst_pid;
         }
         perror("Lockfile");
         exit(1);
@@ -742,13 +751,15 @@ program_running_check()
 int main(int argc, char **argv)
 {
     int ins_pid;
+
+    init_arguments (argc, argv);
+
     if ( (ins_pid = program_running_check ()) ) {
         fprintf(stderr,"@@ERROR: ZLevoClient Already "
                             "Running with PID %d\n", ins_pid);
         exit(EXIT_FAILURE);
     }
 
-    init_arguments (argc, argv);
     init_info();
     init_device();
     init_frames ();
