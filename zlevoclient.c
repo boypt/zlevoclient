@@ -186,13 +186,13 @@ print_server_info (const u_char *str)
     if (!(str[0] == 0x2f && str[1] == 0xfc)) 
         return;
 
-    char info_str [200] = {0};
+    char info_str [1024] = {0};
     int length = str[2];
     if (code_convert ("gb2312", "utf-8", (char*)str + 3, length, info_str, 200) != 0){
         fprintf (stderr, "@@Error: Server info convert error.\n");
         return;
     }
-    fprintf (stderr, "@@Server Info: %s\n", info_str);
+    fprintf (stdout, "&&Server Info: %s\n", info_str);
 }
 
 void
@@ -276,7 +276,7 @@ action_by_eap_type(enum EAPType pType,
     switch(pType){
         case EAP_SUCCESS:
             state = ONLINE;
-            fprintf(stdout, "##Protocol: EAP_SUCCESS\n");
+            fprintf(stdout, ">>Protocol: EAP_SUCCESS\n");
             fprintf(stdout, "&&Info: Authorized Access to Network. \n");
             if (background){
                 background = 0;         /* 防止以后误触发 */
@@ -293,17 +293,14 @@ action_by_eap_type(enum EAPType pType,
                     exit (EXIT_FAILURE);
                 }
             }
-            else {
-                fprintf(stdout, "&&Info: ZlevoClient Keeper thread already started. \n");
-            }
             break;
         case EAP_FAILURE:
             if (state == READY) {
-                fprintf(stdout, "##Protocol: Init Logoff Signal\n");
+                fprintf(stdout, ">>Protocol: Init Logoff Signal\n");
                 return;
             }
             state = READY;
-            fprintf(stdout, "##Protocol: EAP_FAILURE\n");
+            fprintf(stdout, ">>Protocol: EAP_FAILURE\n");
             if(state == ONLINE){
                 fprintf(stdout, "&&Info: SERVER Forced Logoff\n");
             }
@@ -318,14 +315,14 @@ action_by_eap_type(enum EAPType pType,
             break;
         case EAP_REQUEST_IDENTITY:
             if (state == STARTED){
-                fprintf(stdout, "##Protocol: REQUEST EAP-Identity\n");
+                fprintf(stdout, ">>Protocol: REQUEST EAP-Identity\n");
             }
             memset (eap_response_ident + 14 + 5, header->eap_id, 1);
             send_eap_packet(EAP_RESPONSE_IDENTITY);
             break;
         case EAP_REQUETS_MD5_CHALLENGE:
             state = ID_AUTHED;
-            fprintf(stdout, "##Protocol: REQUEST MD5-Challenge(PASSWORD)\n");
+            fprintf(stdout, ">>Protocol: REQUEST MD5-Challenge(PASSWORD)\n");
             fill_password_md5((u_char*)header->eap_info_tailer, 
                                         header->eap_id);
             send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
@@ -345,28 +342,28 @@ send_eap_packet(enum EAPType send_type)
             state = STARTED;
             frame_data= eapol_start;
             frame_length = 64;
-            fprintf(stdout, "##Protocol: SEND EAPOL-Start\n");
+            fprintf(stdout, ">>Protocol: SEND EAPOL-Start\n");
             break;
         case EAPOL_LOGOFF:
             state = READY;
             frame_data = eapol_logoff;
             frame_length = 64;
-            fprintf(stdout, "##Protocol: SEND EAPOL-Logoff\n");
+            fprintf(stdout, ">>Protocol: SEND EAPOL-Logoff\n");
             break;
         case EAP_RESPONSE_IDENTITY:
             frame_data = eap_response_ident;
             frame_length = 54 + username_length;
-            fprintf(stdout, "##Protocol: SEND EAP-Response/Identity\n");
+            fprintf(stdout, ">>Protocol: SEND EAP-Response/Identity\n");
             break;
         case EAP_RESPONSE_MD5_CHALLENGE:
             frame_data = eap_response_md5ch;
             frame_length = 40 + username_length + 14;
-            fprintf(stdout, "##Protocol: SEND EAP-Response/Md5-Challenge\n");
+            fprintf(stdout, ">>Protocol: SEND EAP-Response/Md5-Challenge\n");
             break;
         case EAP_RESPONSE_IDENTITY_KEEP_ALIVE:
             frame_data = eapol_keepalive;
             frame_length = 64;
-            fprintf(stdout, "##Protocol: SEND EAPOL Keep Alive\n");
+            fprintf(stdout, ">>Protocol: SEND EAPOL Keep Alive\n");
             break;
         default:
             fprintf(stderr,"&&IMPORTANT: Wrong Send Request Type.%02x\n", send_type);
