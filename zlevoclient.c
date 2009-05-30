@@ -25,6 +25,7 @@
 #include <errno.h>
 
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 
 #include <netinet/in.h>
 #include <net/if.h>
@@ -33,13 +34,14 @@
 #include <signal.h>
 #include <getopt.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include <iconv.h>
 #include "md5.h"
 #include <arpa/inet.h>
 
 /* ZlevoClient Version */
-#define LENOVO_VER "0.6"
+#define LENOVO_VER "0.7"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
@@ -49,6 +51,11 @@
 
 /* Ethernet addresses are 6 bytes */
 #define ETHER_ADDR_LEN	6
+
+#define LOCKFILE "/var/run/zlevoclient.pid"
+
+#define LOCKMODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
+
 /* Ethernet header */
 struct sniff_ethernet {
     u_char  ether_dhost[ETHER_ADDR_LEN];    /* destination host address */
@@ -100,16 +107,18 @@ void    init_device();
 void    init_arguments(int argc, char **argv);
 int     set_device_new_ip();
 void    fill_password_md5(u_char *attach_key, u_int id);
+int     program_running_check();
+void*   keep_alive(void *arg);
+int     code_convert(char *from_charset, char *to_charset,
+             char *inbuf, size_t inlen, char *outbuf, size_t outlen);
+void    print_server_info (const u_char *str);
+void    daemon_init(void);
+
 
 
 static void signal_interrupted (int signo);
 static void get_packet(u_char *args, const struct pcap_pkthdr *header, 
                         const u_char *packet);
-void* keep_alive(void *arg);
-int code_convert(char *from_charset, char *to_charset,
-             char *inbuf, size_t inlen, char *outbuf, size_t outlen);
-void print_server_info (const u_char *str);
-
 
 //u_char local_ip[] = {0x0a, 0x0b, 0x18, 0x2d};
 u_char talier_eapol_start[] = {0x00, 0x00, 0x2f, 0xfc, 0x03, 0x00};
@@ -280,11 +289,7 @@ action_by_eap_type(enum EAPType pType,
             fprintf(stdout, "&&Info: Authorized Access to Network. \n");
             if (background){
                 background = 0;         /* 防止以后误触发 */
-                pid_t pID = fork();     /* fork至后台，主程序退出 */
-                if (pID != 0) {
-                    fprintf(stdout, "&&Info: ZlevoClient Forked background with PID: [%d]\n\n", pID);
-                    exit(0);
-                }
+                daemon_init ();  /* fork至后台，主程序退出 */
             }
             if ( !live_keeper_id ) {
                 if ( pthread_create(&live_keeper_id, NULL, 
@@ -673,57 +678,77 @@ void* keep_alive(void *arg)
     }
 }
 
-void program_unique_check(const char* program)
+void
+daemon_init(void)
 {
-    FILE    *fd;
-    pid_t   id = 0;
-    char    command[50] = {0};
-    char    pid_num[20] = {0};
-    const char* program_name;
+	pid_t	pid;
+    int ins_pid;
 
-    program_name = strrchr (program, '/');
-    if (program_name)
-        ++program_name;
-    else
-        program_name = program;
+	if ( (pid = fork()) < 0)
+	    perror ("Fork");
+	else if (pid != 0) {
+        fprintf(stdout, "&&Info: ZLevoClient Forked background with PID: [%d]\n\n", pid);
+		exit(0);
+    }
+	setsid();		/* become session leader */
+	chdir("/");		/* change working directory */
+	umask(0);		/* clear our file mode creation mask */
 
-    strcat (command, "ps -Ao pid,comm|grep ");
-    strcat (command, program_name);
+    sleep (1);      /* wait for the parent exit completely */
 
-    if ( (fd = popen(command, "r")) == NULL ) {
-        perror("popen");
+    if ( (ins_pid = program_running_check ()) ) {
+        fprintf(stderr,"@@Fatal ERROR: Another instance "
+                            "running with PID %d\n", ins_pid);
         exit(EXIT_FAILURE);
     }
-
-    fgets(pid_num, 20, fd);
-
-    id = atoi(pid_num);
-
-    if (exit_flag){
-        if ( getpid() == id ){
-            fprintf (stderr, "@@Error: No `%s' Running.\n", program_name);
-            exit(EXIT_FAILURE);
-        }
-        if ( kill (id, SIGINT) == -1 ) {
-			perror("kill");
-			exit(EXIT_FAILURE);
-        }
-        fprintf (stdout, "&&Info: Exit Signal Sent.\n");
-        exit(EXIT_SUCCESS);
-    }
-    if ( getpid() != id ){
-        fprintf (stderr, "@@Error: There's another `%s' running with PID %d\n",
-                program_name, id);
-        exit(EXIT_FAILURE);
-    }
-    pclose(fd);
 }
+
+
+int 
+program_running_check()
+{
+    int fd;
+    char buf[16];
+    struct flock fl;
+    fl.l_type = F_WRLCK;
+    fl.l_start = 0;
+    fl.l_whence = SEEK_SET;
+    fl.l_len = 0;
+
+    fd = open (LOCKFILE, O_RDWR | O_CREAT , LOCKMODE);
+
+    if (fd < 0){
+        perror ("Lockfile");
+        exit(1);
+    }
+
+    if (fcntl(fd, F_SETLK, &fl) < 0){
+        if(errno == EACCES || errno == EAGAIN){
+            read (fd, buf, 16);
+            close(fd);
+            return atoi (buf);
+        }
+        perror("Lockfile");
+        exit(1);
+    }
+
+    ftruncate(fd, 0);    
+    sprintf(buf, "%ld", (long)getpid());
+    write(fd, buf, strlen(buf) + 1);
+    return 0;
+}
+
 
 int main(int argc, char **argv)
 {
-    init_arguments (argc, argv);
-    program_unique_check (argv[0]);
+    int ins_pid;
+    if ( (ins_pid = program_running_check ()) ) {
+        fprintf(stderr,"@@ERROR: ZLevoClient Already "
+                            "Running with PID %d\n", ins_pid);
+        exit(EXIT_FAILURE);
+    }
 
+    init_arguments (argc, argv);
     init_info();
     init_device();
     init_frames ();
