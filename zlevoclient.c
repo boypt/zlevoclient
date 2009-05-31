@@ -609,8 +609,10 @@ static void
 signal_interrupted (int signo)
 {
     fprintf(stdout,"\n&&Info: USER Interrupted. \n");
-//    send_eap_packet(EAPOL_LOGOFF);
+    send_eap_packet(EAPOL_LOGOFF);
     pcap_breakloop (handle);
+    pcap_close (handle);
+    exit (EXIT_FAILURE);
 }
 
 void init_arguments(int argc, char **argv)
@@ -733,7 +735,8 @@ program_running_check()
                                 perror("kill");
                                 exit(EXIT_FAILURE);
                 }
-                exit (EXIT_SUCCESS);
+                fprintf (stdout, "&&Info: Kill Signal Sent to PID %d.\n", inst_pid);
+                exit (EXIT_FAILURE);
             }
             return inst_pid;
         }
