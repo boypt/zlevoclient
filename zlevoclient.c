@@ -209,7 +209,7 @@ show_usage()
 {
     printf( "\n"
             "ZlevoClient %s \n"
-            "\t  -- Supllicant for DigiChina Authentication.\n"
+            "\t  -- Supllicant for Lenovo 802.1x Authentication.\n"
             "\n"
             "  Usage:\n"
             "\tRun under root privilege, usually by `sudo', with your \n"
