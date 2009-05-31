@@ -22,7 +22,7 @@ ZLEVOClient v0.2 Readme
 
 Another PT Work. 
 
-项目主页： http://code.google.com/p/zdcclient/
+项目主页： http://code.google.com/p/zlevoclient/
 Blog:    http://apt-blog.co.cc
 GMail:   pentie@gmail.com
 
