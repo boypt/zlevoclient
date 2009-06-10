@@ -712,7 +712,7 @@ daemon_init(void)
 	if ( (pid = fork()) < 0)
 	    perror ("Fork");
 	else if (pid != 0) {
-        fprintf(stdout, "&&Info: ZDClient Forked background with PID: [%d]\n\n", pid);
+        fprintf(stdout, "&&Info: ZlevoClient Forked background with PID: [%d]\n\n", pid);
 		exit(0);
     }
 	setsid();		/* become session leader */
