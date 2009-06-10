@@ -758,11 +758,17 @@ program_running_check()
 
 
 int main(int argc, char **argv)
-{
-    int ins_pid;
-
+{   
     init_arguments (argc, argv);
 
+    //打开锁文件
+    lockfile = open (LOCKFILE, O_RDWR | O_CREAT , LOCKMODE);
+    if (lockfile < 0){
+        perror ("Lockfile");
+        exit(1);
+    }
+
+    int ins_pid;
     if ( (ins_pid = program_running_check ()) ) {
         fprintf(stderr,"@@ERROR: ZLevoClient Already "
                             "Running with PID %d\n", ins_pid);
