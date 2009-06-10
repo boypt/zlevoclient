@@ -41,7 +41,7 @@
 #include <arpa/inet.h>
 
 /* ZlevoClient Version */
-#define LENOVO_VER "0.7"
+#define LENOVO_VER "0.8"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
@@ -120,7 +120,6 @@ static void signal_interrupted (int signo);
 static void get_packet(u_char *args, const struct pcap_pkthdr *header, 
                         const u_char *packet);
 
-//u_char local_ip[] = {0x0a, 0x0b, 0x18, 0x2d};
 u_char talier_eapol_start[] = {0x00, 0x00, 0x2f, 0xfc, 0x03, 0x00};
 u_char talier_eap_md5_resp[] = {0x00, 0x00, 0x2f, 0xfc, 0x00, 0x03, 0x01, 0x01, 0x00};
 
@@ -157,6 +156,7 @@ u_int       live_count = 0;             /* KEEP ALIVE 报文的计数值 */
 pthread_t   live_keeper_id;
 int         exit_flag = 0;
 int         debug_on = 0;
+int         lockfile;
 
 // debug function
 void 
@@ -681,74 +681,80 @@ void* keep_alive(void *arg)
 }
 
 void
+flock_reg ()
+{
+    char buf[16];
+    struct flock fl;
+    fl.l_start = 0;
+    fl.l_whence = SEEK_SET;
+    fl.l_len = 0;
+    fl.l_type = F_WRLCK;
+    fl.l_pid = getpid();
+ 
+    //阻塞式的加锁
+    if (fcntl (lockfile, F_SETLKW, &fl) < 0){
+        perror ("fcntl_reg");
+        exit(1);
+    }
+ 
+    //把pid写入锁文件
+    ftruncate (lockfile, 0);    
+    sprintf (buf, "%ld", (long)getpid());
+    write (lockfile, buf, strlen(buf) + 1);
+}
+
+
+void
 daemon_init(void)
 {
 	pid_t	pid;
-    int ins_pid;
 
 	if ( (pid = fork()) < 0)
 	    perror ("Fork");
 	else if (pid != 0) {
-        fprintf(stdout, "&&Info: ZLevoClient Forked background with PID: [%d]\n\n", pid);
+        fprintf(stdout, "&&Info: ZDClient Forked background with PID: [%d]\n\n", pid);
 		exit(0);
     }
 	setsid();		/* become session leader */
 	chdir("/");		/* change working directory */
 	umask(0);		/* clear our file mode creation mask */
 
-    sleep (1);      /* wait for the parent exit completely */
-
-    if ( (ins_pid = program_running_check ()) ) {
-        fprintf(stderr,"@@Fatal ERROR: Another instance "
-                            "running with PID %d\n", ins_pid);
-        exit(EXIT_FAILURE);
-    }
+    flock_reg ();
 }
 
 
 int 
 program_running_check()
 {
-    int fd;
-    char buf[16];
     struct flock fl;
-    fl.l_type = F_WRLCK;
     fl.l_start = 0;
     fl.l_whence = SEEK_SET;
     fl.l_len = 0;
-
-    fd = open (LOCKFILE, O_RDWR | O_CREAT , LOCKMODE);
-
-    if (fd < 0){
-        perror ("Lockfile");
+    fl.l_type = F_WRLCK;
+ 
+    //尝试获得文件锁
+    if (fcntl (lockfile, F_GETLK, &fl) < 0){
+        perror ("fcntl_get");
         exit(1);
     }
-
-    if (fcntl(fd, F_SETLK, &fl) < 0){
-        if(errno == EACCES || errno == EAGAIN){
-            read (fd, buf, 16);
-            close(fd);
-
-            int inst_pid = atoi (buf);
-            if (exit_flag) {
-                if ( kill (inst_pid, SIGINT) == -1 ) {
-                                perror("kill");
-                                exit(EXIT_FAILURE);
-                }
-                fprintf (stdout, "&&Info: Kill Signal Sent to PID %d.\n", inst_pid);
-                exit (EXIT_FAILURE);
+    //没有锁，则给文件加锁，否则返回锁着文件的进程pid
+    if (fl.l_type == F_UNLCK) {
+        flock_reg ();
+        return 0;
+    }
+    else {
+        if (exit_flag) {
+            if ( kill (fl.l_pid, SIGINT) == -1 ) {
+                            perror("kill");
+                            exit(EXIT_FAILURE);
             }
-            return inst_pid;
+            fprintf (stdout, "&&Info: Kill Signal Sent to PID %d.\n", fl.l_pid);
+            exit (EXIT_FAILURE);
         }
-        perror("Lockfile");
-        exit(1);
     }
-
-    ftruncate(fd, 0);    
-    sprintf(buf, "%ld", (long)getpid());
-    write(fd, buf, strlen(buf) + 1);
-    return 0;
+    return fl.l_pid;
 }
+
 
 
 int main(int argc, char **argv)
