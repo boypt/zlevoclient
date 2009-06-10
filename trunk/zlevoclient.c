@@ -784,8 +784,9 @@ int main(int argc, char **argv)
 
     printf("######## Lenovo Client ver. %s #########\n", LENOVO_VER);
     printf("Device:     %s\n", dev);
-    printf("MAC:        ");
-    print_hex(local_mac, 6);
+    printf("MAC:        %02x:%02x:%02x:%02x:%02x:%02x\n",
+                        local_mac[0],local_mac[1],local_mac[2],
+                        local_mac[3],local_mac[4],local_mac[5]);
     printf("IP:         %s\n", inet_ntoa(*(struct in_addr*)&local_ip));
     printf("########################################\n");
 
