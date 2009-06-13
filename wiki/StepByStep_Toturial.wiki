@@ -28,7 +28,7 @@ gedit zlevo_run.sh
 {{{
 sudo ./zlevo_run.sh
 }}}
-恩，会出现一系列的提示，不过完了之后看到类似
+恩，会出现一系列的提示，如下：
 {{{
 ######## Lenovo Client ver. 0.8 #########
 Device:     eth0
