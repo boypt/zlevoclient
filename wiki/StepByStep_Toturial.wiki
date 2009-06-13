@@ -4,23 +4,12 @@
 = zlevoclient 使用教程 =
 
 ==下载解压==
-从[http://code.google.com/p/zlevoclient/ 项目主页]下载最新的源代码，下面以
-zlevoclient_0.1-src.tar.gz为例：
+从[http://code.google.com/p/zlevoclient/ 项目主页]下载最新的二进制包，下面以
+zlevoclient-0.8-bin_i386.tar.gz为例：
 {{{
-tar xvf zlevoclient_0.1-src.tar.gz
-cd  zlevoclient
+tar xvf zlevoclient-0.8-bin_i386.tar.gz
+cd  zlevoclient-0.8-bin_i386
 }}}
-
-==编译==
-编译需要libpcap库，一般Linux发行版里面安装libpcap包即可，在ubuntu中： 
-{{{
-sudo apt-get install libpcap-dev
-}}}
-进入源代码所在的目录：
-{{{
-make
-}}}
-我们便得到可执行的二进制文件zlevoclient。
 
 ==启动脚本==
 在目录中有一个自动运行的脚本，zlevo_run.sh*
@@ -41,8 +30,22 @@ sudo ./zlevo_run.sh
 }}}
 恩，会出现一系列的提示，不过完了之后看到类似
 {{{
+######## Lenovo Client ver. 0.8 #########
+Device:     eth0
+MAC:        00:e0:4d:23:cd:92
+IP:         10.11.24.45
+########################################
+>>Protocol: SEND EAPOL-Start
+>>Protocol: REQUEST EAP-Identity
+>>Protocol: SEND EAP-Response/Identity
+>>Protocol: REQUEST MD5-Challenge(PASSWORD)
+>>Protocol: SEND EAP-Response/Md5-Challenge
+>>Protocol: EAP_SUCCESS
 &&Info: Authorized Access to Network. 
-&&Info: ZDClient Forked background with PID: [12345]
+&&Info: ZlevoClient Forked background with PID: [11168]
+
+>>Protocol: SEND EAPOL Keep Alive
+
 }}}
 
 *~~理论上~~现在你就能上网了！*
