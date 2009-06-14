@@ -2,6 +2,8 @@
 #labels Featured,lenovo,client
 
 = zlevoclient 使用教程 =
+= 注意 =
+本教程假设您已经配置好您的静态ip地址了，如果不知道怎么配置静态ip，请google一下。
 
 ==下载解压==
 从[http://code.google.com/p/zlevoclient/ 项目主页]下载最新的二进制包，下面以
@@ -11,8 +13,15 @@ tar xvf zlevoclient-0.8-bin_i386.tar.gz
 cd  zlevoclient-0.8-bin_i386
 }}}
 
+==使用方法==
+{{{
+sudo  ./zlevoclient -u username -p password -b
+}}}
+
+如果您想使用启动脚本来运行，请参考下面的步骤：
+
 ==启动脚本==
-在目录中有一个自动运行的脚本，zlevo_run.sh*
+在目录中有一个自动运行的脚本，zlevo_run.sh
 现在假设大家用的是默认版本的ubuntu，系统里面有gedit编辑器：
 {{{
 gedit zlevo_run.sh
@@ -28,7 +37,7 @@ gedit zlevo_run.sh
 {{{
 sudo ./zlevo_run.sh
 }}}
-恩，会出现一系列的提示，如下：
+恩，会出现一系列类似如下的提示：
 {{{
 ######## Lenovo Client ver. 0.8 #########
 Device:     eth0
