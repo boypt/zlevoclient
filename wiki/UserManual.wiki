@@ -18,5 +18,14 @@ sudo ./zlevoclient -u username -p password --background
 用gedit等编辑软件修改sh文件内的username、password，以后运行sudo ./zlevo_run.sh即可。
 	
 ==终止：==
-	默认方式启动的程序，按Ctrl + C即可正常下线，程序终止；
-	在以后台方式启动后，程序每隔约20秒就输出一次协议提示，其中方括号［xxx］的数值为进程pid，可用sudo kill xxx可终止进程。如果已经了运行时的关闭窗口，就只能使用ps -A|grep zlevoclient来找到pid了。
+默认方式启动的程序，按Ctrl + C即可正常下线，程序终止。
+若以后台方式启动后，可使用如下方式来终止程序：
+{{{
+sudo ./zlevoclient -l
+}}}
+ 
+出现如下提示:
+{{{                  
+&&Info: Kill Signal Sent to PID 2010.
+}}}
+成功下线。
