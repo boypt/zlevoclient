@@ -6,7 +6,9 @@
 {{{
 sudo apt-get install libpcap-dev
 }}}
-	然后从命令行进入源代码目录，运行make，应该很快就能生成zlevoclient，当然前提是系统中安装了gcc等编译环境，这里不再累赘。理论上兼容包括Mac、Solaris等Unix系系统。
+	然后从命令行进入源代码目录，运行make，应该很快就能生成zlevoclient，当然前提是系统中安装了gcc等编译环境，这里不再累赘。
+
+	如果需要静态编译libpcap库（这样无论目标运行系统有没有安装libpcap库、或者任何版本，都能正常认证），可以修改Makefile文件，把第二行LIBS = -lpcap改成LIBS = /usr/lib/libpcap.a
 	
 ==运行：==
 	运行需要root权限，看例子即可：
@@ -29,3 +31,13 @@ sudo ./zlevoclient -l
 &&Info: Kill Signal Sent to PID 2010.
 }}}
 成功下线。
+
+
+
+*Another PT Work. *
+
+*Blog*:  http://apt-blog.co.cc/
+
+*GMail*: pentie # gmail.com
+
+2009-05-20 于广州大学城
