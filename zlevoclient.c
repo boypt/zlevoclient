@@ -16,6 +16,8 @@
  * =====================================================================================
  */
 
+#include <assert.h>
+
 #include <pcap.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -114,8 +116,6 @@ int     code_convert(char *from_charset, char *to_charset,
 void    print_server_info (const u_char *str);
 void    daemon_init(void);
 
-
-
 static void signal_interrupted (int signo);
 static void get_packet(u_char *args, const struct pcap_pkthdr *header, 
                         const u_char *packet);
@@ -123,40 +123,52 @@ static void get_packet(u_char *args, const struct pcap_pkthdr *header,
 u_char talier_eapol_start[] = {0x00, 0x00, 0x2f, 0xfc, 0x03, 0x00};
 u_char talier_eap_md5_resp[] = {0x00, 0x00, 0x2f, 0xfc, 0x00, 0x03, 0x01, 0x01, 0x00};
 
+/* #####   GLOBLE VAR DEFINITIONS   ######################### */
+/*-----------------------------------------------------------------------------
+ *  程序的主控制变量
+ *-----------------------------------------------------------------------------*/
+int         lockfile;
 char        errbuf[PCAP_ERRBUF_SIZE];  /* error buffer */
 enum STATE  state = READY;                     /* program state */
 pcap_t      *handle = NULL;			   /* packet capture handle */
+pthread_t   live_keeper_id;
+u_char      muticast_mac[] =            /* 802.1x的认证服务器多播地址 */
+                        {0x01, 0x80, 0xc2, 0x00, 0x00, 0x03};
 
+
+/* #####   GLOBLE VAR DEFINITIONS   ###################
+ *-----------------------------------------------------------------------------
+ *  用户信息的赋值变量，由init_argument函数初始化
+ *-----------------------------------------------------------------------------*/
 int         background = 0;            /* 后台运行标记  */     
 char        *dev = NULL;               /* 连接的设备名 */
 char        *username = NULL;          
 char        *password = NULL;
+int         exit_flag = 0;
+int         debug_on = 0;
 
+/* #####   GLOBLE VAR DEFINITIONS   ######################### 
+ *-----------------------------------------------------------------------------
+ *  报文相关信息变量，由init_info 、init_device函数初始化。
+ *-----------------------------------------------------------------------------*/
 int         username_length;
 int         password_length;
-
 u_int       local_ip = 0;
-
 u_char      local_mac[ETHER_ADDR_LEN]; /* MAC地址 */
+char        devname[64];
 
-char        *client_ver = NULL;         /* 报文协议版本号 */
-
-u_char      muticast_mac[] =            /* 802.1x的认证服务器多播地址 */
-                        {0x01, 0x80, 0xc2, 0x00, 0x00, 0x03};
-
+/* #####   TYPE DEFINITIONS   ######################### */
+/*-----------------------------------------------------------------------------
+ *  报文缓冲区，由init_frame函数初始化。
+ *-----------------------------------------------------------------------------*/
 u_char      eapol_start[64];            /* EAPOL START报文 */
 u_char      eapol_logoff[64];           /* EAPOL LogOff报文 */
 u_char      eapol_keepalive[64];
 u_char      *eap_response_ident = NULL; /* EAP RESPON/IDENTITY报文 */
 u_char      *eap_response_md5ch = NULL; /* EAP RESPON/MD5 报文 */
 
-u_int       live_count = 0;             /* KEEP ALIVE 报文的计数值 */
+//u_int       live_count = 0;             /* KEEP ALIVE 报文的计数值 */
 //pid_t       current_pid = 0;            /* 记录后台进程的pid */
-
-pthread_t   live_keeper_id;
-int         exit_flag = 0;
-int         debug_on = 0;
-int         lockfile;
 
 // debug function
 void 
@@ -525,15 +537,32 @@ void init_info()
 
 }
 
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  init_device
+ *  Description:  初始化设备。主要是找到打开网卡、获取网卡MAC、IP，
+ *  同时设置pcap的初始化工作句柄。
+ * =====================================================================================
+ */
 void init_device()
 {
-    struct bpf_program fp;			/* compiled filter program (expression) */
-    char filter_exp[51];/* filter expression [3] */
-//	bpf_u_int32 mask;			/* subnet mask */
-//	bpf_u_int32 net;			/* ip */
+    struct          bpf_program fp;			/* compiled filter program (expression) */
+    char            filter_exp[51];         /* filter expression [3] */
+    pcap_if_t       *alldevs;
+    pcap_addr_t     *addrs;
 
-    if(dev == NULL)
-	    dev = pcap_lookupdev(errbuf);
+	/* Retrieve the device list */
+	if(pcap_findalldevs(&alldevs, errbuf) == -1)
+	{
+		fprintf(stderr,"Error in pcap_findalldevs: %s\n", errbuf);
+		exit(1);
+	}
+
+    /* 使用第一块设备 */
+    if(dev == NULL) {
+        dev = alldevs->name;
+        strcpy (devname, dev);
+    }
 
 	if (dev == NULL) {
 		fprintf(stderr, "Couldn't find default device: %s\n",
@@ -555,6 +584,13 @@ void init_device()
 		exit(EXIT_FAILURE);
 	}
 
+    /* Get IP ADDR and MASK */
+    for (addrs = alldevs->addresses; addrs; addrs=addrs->next) {
+        if (addrs->addr->sa_family == AF_INET) {
+            local_ip = ((struct sockaddr_in *)addrs->addr)->sin_addr.s_addr;
+        }
+    }
+
     /* get device basic infomation */
     struct ifreq ifr;
     int sock;
@@ -572,14 +608,6 @@ void init_device()
         exit(EXIT_FAILURE);
     }
     memcpy(local_mac, ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
-
-    if(ioctl(sock, SIOCGIFADDR, &ifr) < 0)
-    {
-        perror("ioctl");
-        exit(EXIT_FAILURE);
-    }
-    local_ip = ((struct  sockaddr_in*)&ifr.ifr_addr)->sin_addr.s_addr;
-
 
     /* construct the filter string */
     sprintf(filter_exp, "ether dst %02x:%02x:%02x:%02x:%02x:%02x"
@@ -602,8 +630,8 @@ void init_device()
 		exit(EXIT_FAILURE);
 	}
     pcap_freecode(&fp);
+    pcap_freealldevs(alldevs);
 }
-
 
 static void
 signal_interrupted (int signo)
@@ -678,6 +706,7 @@ void* keep_alive(void *arg)
         send_eap_packet (EAP_RESPONSE_IDENTITY_KEEP_ALIVE);
         sleep (60);
     }
+    return (void*)0;
 }
 
 void
@@ -694,13 +723,13 @@ flock_reg ()
     //阻塞式的加锁
     if (fcntl (lockfile, F_SETLKW, &fl) < 0){
         perror ("fcntl_reg");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
  
     //把pid写入锁文件
-    ftruncate (lockfile, 0);    
+    assert (0 == ftruncate (lockfile, 0) );    
     sprintf (buf, "%ld", (long)getpid());
-    write (lockfile, buf, strlen(buf) + 1);
+    assert (-1 != write (lockfile, buf, strlen(buf) + 1));
 }
 
 
@@ -708,18 +737,24 @@ void
 daemon_init(void)
 {
 	pid_t	pid;
+    int     fd0;
 
 	if ( (pid = fork()) < 0)
 	    perror ("Fork");
 	else if (pid != 0) {
-        fprintf(stdout, "&&Info: ZlevoClient Forked background with PID: [%d]\n\n", pid);
-		exit(0);
+        fprintf(stdout, "&&Info: Forked background with PID: [%d]\n\n", pid);
+		exit(EXIT_SUCCESS);
     }
 	setsid();		/* become session leader */
-	chdir("/");		/* change working directory */
+	assert (0 == chdir("/tmp"));		/* change working directory */
 	umask(0);		/* clear our file mode creation mask */
-
     flock_reg ();
+
+    fd0 = open ("/dev/null", O_RDWR);
+    dup2 (fd0, STDIN_FILENO);
+    dup2 (fd0, STDERR_FILENO);
+    dup2 (fd0, STDOUT_FILENO);
+    close (fd0);
 }
 
 
@@ -735,26 +770,29 @@ program_running_check()
     //尝试获得文件锁
     if (fcntl (lockfile, F_GETLK, &fl) < 0){
         perror ("fcntl_get");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
+
+    if (exit_flag) {
+        if (fl.l_type != F_UNLCK) {
+            if ( kill (fl.l_pid, SIGINT) == -1 )
+                perror("kill");
+            fprintf (stdout, "&&Info: Kill Signal Sent to PID %d.\n", fl.l_pid);
+        }
+        else 
+            fprintf (stderr, "&&Info: NO zLenovoClient Running.\n");
+        exit (EXIT_FAILURE);
+    }
+
+
     //没有锁，则给文件加锁，否则返回锁着文件的进程pid
     if (fl.l_type == F_UNLCK) {
         flock_reg ();
         return 0;
     }
-    else {
-        if (exit_flag) {
-            if ( kill (fl.l_pid, SIGINT) == -1 ) {
-                            perror("kill");
-                            exit(EXIT_FAILURE);
-            }
-            fprintf (stdout, "&&Info: Kill Signal Sent to PID %d.\n", fl.l_pid);
-            exit (EXIT_FAILURE);
-        }
-    }
+
     return fl.l_pid;
 }
-
 
 
 int main(int argc, char **argv)
@@ -783,7 +821,7 @@ int main(int argc, char **argv)
     signal (SIGTERM, signal_interrupted);    
 
     printf("######## Lenovo Client ver. %s #########\n", LENOVO_VER);
-    printf("Device:     %s\n", dev);
+    printf("Device:     %s\n", devname);
     printf("MAC:        %02x:%02x:%02x:%02x:%02x:%02x\n",
                         local_mac[0],local_mac[1],local_mac[2],
                         local_mac[3],local_mac[4],local_mac[5]);
