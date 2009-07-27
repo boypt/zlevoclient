@@ -250,20 +250,24 @@ show_usage()
             LENOVO_VER);
 }
 
-/* calcuate for md5 digest */
+/* 
+ * ===  FUNCTION  ======================================================================
+ *         Name:  get_md5_digest
+ *  Description:  calcuate for md5 digest
+ * =====================================================================================
+ */
 char* 
 get_md5_digest(const char* str, size_t len)
 {
+    static md5_byte_t digest[16];
 	md5_state_t state;
-	md5_byte_t digest[16];
 	md5_init(&state);
 	md5_append(&state, (const md5_byte_t *)str, len);
 	md5_finish(&state, digest);
 
-    char *result = malloc(16);
-    memcpy(result, digest, 16);
-    return result;
+    return (char*)digest;
 }
+
 
 enum EAPType 
 get_eap_type(const struct sniff_eap_header *eap_header) 
@@ -503,7 +507,7 @@ void
 fill_password_md5(u_char *attach_key, u_int id)
 {
     char *psw_key = malloc(1 + password_length + 16);
-    char *md5_challenge_key;
+    char *md5;
     psw_key[0] = id;
     memcpy (psw_key + 1, password, password_length);
     memcpy (psw_key + 1 + password_length, attach_key, 16);
@@ -513,16 +517,12 @@ fill_password_md5(u_char *attach_key, u_int id)
         print_hex ((u_char*)psw_key, 1 + password_length + 16);
     }
 
-    md5_challenge_key = get_md5_digest(psw_key, 1 + password_length + 16);
-
-//    printf("@@DEBUG: MD5-Challenge:\n");
-//    print_hex (md5_challenge_key, 16);
+    md5 = get_md5_digest(psw_key, 1 + password_length + 16);
 
     memset (eap_response_md5ch + 14 + 5, id, 1);
-    memcpy (eap_response_md5ch + 14 + 10, md5_challenge_key, 16);
+    memcpy (eap_response_md5ch + 14 + 10, md5, 16);
 
     free (psw_key);
-    free (md5_challenge_key);
 }
 
 void init_info()
