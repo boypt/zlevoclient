@@ -1,18 +1,46 @@
-CC = gcc
-LIBS = /usr/lib/libpcap.a -lpthread
-CFLAGS = -Wall -g
+# Project: zRuijie4GZHU
+# Makefile created by Dev-C++ 4.9.9.2
 
-.PHONY: all
-all: zlevoclient
+CPP  = i486-mingw32-g++
+CC   = i486-mingw32-gcc
+WINDRES = i486-mingw32-windres
+RES  = zRuijie4GZHU_private.res
+OBJ  =  win_main.o md5.o eap_protocol.o zlevoclient.o  $(RES)
+LINKOBJ  = $(OBJ)
+LIBS =  -L"/usr/i486-mingw32/lib" -L"WpdPack/Lib" -lcomctl32 -lwpcap -lws2_32 -liphlpapi #-mwindows 
+INCS =  -I"/usr/i486-mingw32/include"  -I"WpdPack/Include"
+CXXINCS = 
+BIN  = zLenovoClient.exe
+CXXFLAGS = $(CXXINCS)   -fexpensive-optimizations -O2
+CFLAGS = $(INCS)  -Wall -Os
 
-zlevoclient	: md5.o zlevoclient.o
-	$(CC) $(CFLAGS) -o $@ md5.o zlevoclient.o $(LIBS)
+RM = rm -f
 
-md5.o	: md5.c md5.h
-	$(CC) $(CFLAGS) -c $<
+.PHONY: all all-before all-after clean clean-custom
 
-zlevoclient.o : zlevoclient.c
-	$(CC) $(CFLAGS) -c $<
-	
-clean :
-	rm -v *.o zlevoclient
+all: all-before $(BIN) all-after
+
+
+clean: clean-custom
+	${RM} $(OBJ) $(BIN) *~
+
+$(BIN): $(OBJ)
+	$(CC) $(LINKOBJ) -o $(BIN) $(LIBS)
+
+win_main.o: win_main.c
+	$(CC) -c win_main.c -o win_main.o $(CFLAGS)
+
+blog.o: blog.c
+	$(CC) -c blog.c -o blog.o $(CFLAGS)
+
+eap_protocol.o: eap_protocol.c
+	$(CC) -c eap_protocol.c -o eap_protocol.o $(CFLAGS)
+
+md5.o: md5.c
+	$(CC) -c md5.c -o md5.o $(CFLAGS)
+
+zruijie.o: zruijie.c
+	$(CC) -c zruijie.c -o zruijie.o $(CFLAGS)
+
+zRuijie4GZHU_private.res: zRuijie4GZHU_private.rc 
+	$(WINDRES) -i zRuijie4GZHU_private.rc --input-format=rc -o zRuijie4GZHU_private.res -O coff 
