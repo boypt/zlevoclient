@@ -243,51 +243,18 @@ get_md5_digest(const char* str, size_t len)
 //    fprintf (stdout, "&&Server Info: %s\n", info_str);
 //}
 
-
 void 
 print_server_info (const uint8_t *packet)
 {
-    char            msg_buf[1024];
-    char            *msg;
-    uint16_t        msg_length;
-    uint16_t        empty_length;
-    uint16_t        account_info_offset;
 
-    msg_length = ntohs(*(uint16_t*)(packet + 0x1a));
-    empty_length = ntohs(*(uint16_t*)(packet + 0x1c + msg_length + 0x04));
-    account_info_offset = 0x1c + msg_length + 0x06 + empty_length + 0x12 + 0x09;
+    if ( *(packet + 0x18) != 0x2f && *(packet + 0x19) != 0xfc)
+        return;
 
-    /* success和failure报文系统信息的固定位置 */
-    if (msg_length) {
-        msg = (char*)(packet + 0x1c);
-		memset (msg_buf, 0, 1024);
-		snprintf (msg_buf, msg_length + 1, "%s\n", msg);
-		edit_info_append (msg_buf);
-    }
+    char info_str [1024] = {0};
+    uint8_t length = *(uint8_t*)(packet + 0x20);
+    strncpy (info_str, (const char*)(packet + 0x21), length);
 
-    /* success报文关于用户账户信息 */
-    if (0x1a48 == ntohs(*(uint16_t*)(packet + account_info_offset))) {
-        msg_length = *(uint8_t*)(packet + account_info_offset + 0x07);
-        msg = (char*)(packet + account_info_offset + 0x08);
-		memset (msg_buf, 0, 1024);
-		snprintf (msg_buf, msg_length + 1, "%s\n", msg);
-		edit_info_append (msg_buf);
-    }
-}
-
-void
-print_notification_msg(const uint8_t *packet)
-{
-    char            msg_buf[1024] = {0};
-    size_t          msg_length;
-    char            *msg;
-
-    /* 锐捷的通知报文 */
-    msg = (char*)(packet + 0x1b);
-    msg_length = strlen (msg);
-
-	snprintf (msg_buf, msg_length + 1, "%s\n", msg);
-	edit_info_append (msg_buf);
+    edit_info_append (info_str);
 }
 
 

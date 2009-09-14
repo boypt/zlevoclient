@@ -294,9 +294,6 @@ action_by_eap_type(enum EAPType pType,
         case EAP_REQUETS_MD5_CHALLENGE:
             action_eap_req_md5_chg (eap_head, packetinfo, packet);
             break;
-        case RUIJIE_EAPOL_MSG:
-            print_notification_msg (packet);
-            break;
         default:
             return;
     }
