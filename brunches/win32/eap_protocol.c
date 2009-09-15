@@ -64,29 +64,15 @@ action_eapol_failre(const struct eap_header *eap_head,
 
     print_server_info (packet);
 
-	if (state == ONLINE || state == LOGOFF) {
-		state = READY;
-		DWORD code = 0;
-		GetExitCodeThread (hLIFE_KEEP_THREAD, &code);
-		if (code == STILL_ACTIVE) {
-			TerminateThread (hLIFE_KEEP_THREAD, 0);
-            WaitForSingleObject (hLIFE_KEEP_THREAD, 1000);
-		}
-		
-		code = 0;
-		GetExitCodeThread (hEXIT_WAITER, &code);
-		if (code == STILL_ACTIVE) {
-			TerminateThread (hEXIT_WAITER, 0);
-            WaitForSingleObject (hEXIT_WAITER, 1000);
-		}
+    state = READY;
 
-		pcap_breakloop (handle);
-	}
-	else if (state == CONNECTING) {
-		state = LOGOFF;
-		hEXIT_WAITER = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)wait_exit, 0, 0, 0);
-		/* show server info */
-	}
+    DWORD code = 0;
+    GetExitCodeThread (hLIFE_KEEP_THREAD, &code);
+    if (code == STILL_ACTIVE) {
+        TerminateThread (hLIFE_KEEP_THREAD, 0);
+        WaitForSingleObject (hLIFE_KEEP_THREAD, 1000);
+    }
+    pcap_breakloop (handle);
 }
 
 void
@@ -119,20 +105,20 @@ DWORD WINAPI keep_alive()
 	return 0;
 }
 
-DWORD WINAPI wait_exit()
-{
-    int 	i = 10;
-	char	msg[10];
-    do {
-		snprintf (msg, sizeof(msg), "wait.. %d", i);
-		update_interface_state(msg);
-		printf("%d\n", i);
-        Sleep (1000);
-    }while (i--);
-	state = READY;
-    pcap_breakloop (handle);
-	return 0;
-}
+//DWORD WINAPI wait_exit()
+//{
+//    int 	i = 10;
+//	char	msg[10];
+//    do {
+//		snprintf (msg, sizeof(msg), "wait.. %d", i);
+//		update_interface_state(msg);
+//		printf("%d\n", i);
+//        Sleep (1000);
+//    }while (i--);
+//	state = READY;
+//    pcap_breakloop (handle);
+//	return 0;
+//}
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  send_eap_packet
@@ -144,28 +130,28 @@ send_eap_packet(enum EAPType send_type)
 {
     uint8_t         *frame_data;
     int             frame_length = 0;
-    extern size_t username_length;
+//    extern size_t username_length;
 
     switch(send_type){
         case EAPOL_START:
             frame_data= eapol_start;
-            frame_length = 64;
+            frame_length = sizeof(eapol_start);
             break;
         case EAPOL_LOGOFF:
             frame_data = eapol_logoff;
-            frame_length = 64;
+            frame_length = sizeof(eapol_logoff);
             break;
         case EAP_RESPONSE_IDENTITY:
             frame_data = eap_response_ident;
-            frame_length = 54 + username_length;
+            frame_length = sizeof(eap_response_ident);
             break;
         case EAP_RESPONSE_MD5_CHALLENGE:
             frame_data = eap_response_md5ch;
-            frame_length = 40 + username_length + 14;
+            frame_length = sizeof(eap_response_md5ch);
             break;
         case EAP_RESPONSE_IDENTITY_KEEP_ALIVE:
             frame_data = eap_life_keeping;
-            frame_length = 64;
+            frame_length = sizeof(eap_life_keeping);
             break;
         default:
             return;
