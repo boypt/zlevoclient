@@ -52,7 +52,7 @@ action_eapol_success(const struct eap_header *eap_head,
 
     /* 打开保持线程 */
     hLIFE_KEEP_THREAD = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)keep_alive, 0, 0, 0);
-    edit_info_append("ONLINE");        
+    edit_info_append("-->ONLINE\n");        
 }
 
 void
@@ -74,7 +74,7 @@ action_eapol_failre(const struct eap_header *eap_head,
         WaitForSingleObject (hLIFE_KEEP_THREAD, 1000);
     }
     pcap_breakloop (handle);
-    edit_info_append("FAILURE");        
+    edit_info_append("-->FAILURE\n");        
 
 }
 
@@ -86,7 +86,7 @@ action_eap_req_idnty(const struct eap_header *eap_head,
 	state = CONNECTING;
     eap_response_ident[0x13] = eap_head->eap_id;
     send_eap_packet(EAP_RESPONSE_IDENTITY);
-    edit_info_append("SENT IDN-RES");
+    edit_info_append("-->SENT IDN-RES\n");
 }
 
 void
@@ -98,7 +98,7 @@ action_eap_req_md5_chg(const struct eap_header *eap_head,
     fill_password_md5((uint8_t*)eap_head->eap_md5_challenge, eap_head->eap_id);
     eap_response_md5ch[0x13] = eap_head->eap_id;
     send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
-    edit_info_append("SENT PSW-RES");    
+    edit_info_append("-->SENT PSW-RES\n");    
 }
 
 DWORD WINAPI keep_alive()
@@ -110,20 +110,7 @@ DWORD WINAPI keep_alive()
 	return 0;
 }
 
-//DWORD WINAPI wait_exit()
-//{
-//    int 	i = 10;
-//	char	msg[10];
-//    do {
-//		snprintf (msg, sizeof(msg), "wait.. %d", i);
-//		update_interface_state(msg);
-//		printf("%d\n", i);
-//        Sleep (1000);
-//    }while (i--);
-//	state = READY;
-//    pcap_breakloop (handle);
-//	return 0;
-//}
+
 /* 
  * ===  FUNCTION  ======================================================================
  *         Name:  send_eap_packet

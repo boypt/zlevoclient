@@ -5,7 +5,7 @@
 #include "commondef.h"
 //#include "eap_protocol.h"
 
-#define DIALOG_TITLE "zLenovoClient ""0.6"".1"
+#define DIALOG_TITLE "zLenovoClient ""0.6"".3"
 
 #define REG_KEY_IF_INDEX    "if_index"
 #define REG_KEY_IF_NAME     "if_name"
@@ -127,9 +127,9 @@ INT_PTR CALLBACK DlgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                     case IDC_CHK_AUTO_MIN:
                         auto_min = IsDlgButtonChecked(hwnd, IDC_CHK_AUTO_MIN);
                         reg_info_dword (reg_key, REG_KEY_AUTO_MIN, TRUE, auto_min, NULL);
-//                        if (auto_min && state == ONLINE && IsWindowVisible(hwnd)) {
-//                            ShowWindow(hwnd, SW_HIDE);
-//                        }
+                        if (auto_min && state == ONLINE && IsWindowVisible(hwnd)) {
+                            ShowWindow(hwnd, SW_HIDE);
+                        }
                         break;
 
                     case SWM_SHOW:

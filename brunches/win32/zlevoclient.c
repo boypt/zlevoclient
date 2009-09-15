@@ -211,64 +211,6 @@ get_eap_type(const struct eap_header *eap_header)
     return ERROR;
 }
 
-//void 
-//action_by_eap_type(enum EAPType pType, 
-//                        const struct sniff_eap_header *header) {
-////    printf("PackType: %d\n", pType);
-//    switch(pType){
-//        case EAP_SUCCESS:
-//            state = ONLINE;
-//            fprintf(stdout, ">>Protocol: EAP_SUCCESS\n");
-//            fprintf(stdout, "&&Info: Authorized Access to Network. \n");
-////            if (background){
-////                background = 0;         /* 防止以后误触发 */
-////                daemon_init ();  /* fork至后台，主程序退出 */
-////            }
-////            if ( !live_keeper_id ) {
-////                if ( pthread_create(&live_keeper_id, NULL, 
-////                                            keep_alive, NULL) != 0 ){
-////                    fprintf(stderr, "@@Fatal ERROR: Init Live keep thread failure.\n");
-////                    exit (EXIT_FAILURE);
-////                }
-////            }
-//            break;
-//        case EAP_FAILURE:
-//            if (state == READY) {
-//                fprintf(stdout, ">>Protocol: Init Logoff Signal\n");
-//                return;
-//            }
-//            state = READY;
-//            fprintf(stdout, ">>Protocol: EAP_FAILURE\n");
-////            if(state == ONLINE){
-////                fprintf(stdout, "&&Info: SERVER Forced Logoff\n");
-////            }
-////            if (state == STARTED){
-////                fprintf(stdout, "&&Info: Invalid Username or Client info mismatch.\n");
-////            }
-////            if (state == ID_AUTHED){
-////                fprintf(stdout, "&&Info: Invalid Password.\n");
-////            }
-//            print_server_info (header->eap_info_tailer);
-//            pcap_breakloop (handle);
-//            break;
-//        case EAP_REQUEST_IDENTITY:
-////            if (state == STARTED){
-////                fprintf(stdout, ">>Protocol: REQUEST EAP-Identity\n");
-////            }
-//            memset (eap_response_ident + 14 + 5, header->eap_id, 1);
-//            send_eap_packet(EAP_RESPONSE_IDENTITY);
-//            break;
-//        case EAP_REQUETS_MD5_CHALLENGE:
-////            state = ID_AUTHED;
-//            fprintf(stdout, ">>Protocol: REQUEST MD5-Challenge(PASSWORD)\n");
-//            fill_password_md5((u_char*)header->eap_info_tailer, 
-//                                        header->eap_id);
-//            send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
-//            break;
-//        default:
-//            return;
-//    }
-//}
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -298,55 +240,9 @@ action_by_eap_type(enum EAPType pType,
         default:
             return;
     }
+    update_interface_state(NULL);
 }
 
-//void 
-//send_eap_packet(enum EAPType send_type)
-//{
-//    u_char *frame_data;
-//    int     frame_length = 0;
-//    switch(send_type){
-//        case EAPOL_START:
-////            state = STARTED;
-//            frame_data= eapol_start;
-//            frame_length = 64;
-//            fprintf(stdout, ">>Protocol: SEND EAPOL-Start\n");
-//            break;
-//        case EAPOL_LOGOFF:
-//            state = READY;
-//            frame_data = eapol_logoff;
-//            frame_length = 64;
-//            fprintf(stdout, ">>Protocol: SEND EAPOL-Logoff\n");
-//            break;
-//        case EAP_RESPONSE_IDENTITY:
-//            frame_data = eap_response_ident;
-//            frame_length = 54 + username_length;
-//            fprintf(stdout, ">>Protocol: SEND EAP-Response/Identity\n");
-//            break;
-//        case EAP_RESPONSE_MD5_CHALLENGE:
-//            frame_data = eap_response_md5ch;
-//            frame_length = 40 + username_length + 14;
-//            fprintf(stdout, ">>Protocol: SEND EAP-Response/Md5-Challenge\n");
-//            break;
-//        case EAP_RESPONSE_IDENTITY_KEEP_ALIVE:
-//            frame_data = eapol_keepalive;
-//            frame_length = 64;
-//            fprintf(stdout, ">>Protocol: SEND EAPOL Keep Alive\n");
-//            break;
-//        default:
-//            fprintf(stderr,"&&IMPORTANT: Wrong Send Request Type.%02x\n", send_type);
-//            return;
-//    }
-//    if (debug_on){
-//        printf ("@@DEBUG: Sent Frame Data:\n");
-//        print_hex (frame_data, frame_length);
-//    }
-//    if (pcap_sendpacket(handle, frame_data, frame_length) != 0)
-//    {
-//        fprintf(stderr,"&&IMPORTANT: Error Sending the packet: %s\n", pcap_geterr(handle));
-//        return;
-//    }
-//}
 
 /* 
  * ===  FUNCTION  ======================================================================
@@ -558,46 +454,3 @@ void init_device()
     pcap_freecode(&fp); 
 }
 
-
-//void* keep_alive(void *arg)
-//{
-//    while (1) {
-//        send_eap_packet (EAP_RESPONSE_IDENTITY_KEEP_ALIVE);
-//        sleep (60);
-//    }
-//    return (void*)0;
-//}
-
-
-//int main(int argc, char **argv)
-//{   
-//    init_info();
-//
-// //   ----------------------
-//    init_device();
-//    init_frames ();
-//
-//    signal (SIGINT, signal_interrupted);
-//    signal (SIGTERM, signal_interrupted);    
-//
-//    printf("######## Lenovo Client ver. %s #########\n", LENOVO_VER);
-//    printf("Device:     %s\n", devname);
-//    printf("MAC:        %02x:%02x:%02x:%02x:%02x:%02x\n",
-//                        local_mac[0],local_mac[1],local_mac[2],
-//                        local_mac[3],local_mac[4],local_mac[5]);
-//    printf("IP:         %s\n", inet_ntoa(*(struct in_addr*)&local_ip));
-//    printf("########################################\n");
-//
-////    send_eap_packet (EAPOL_LOGOFF);
-//    send_eap_packet (EAPOL_START);
-//
-//	pcap_loop (handle, -1, get_packet, NULL);   /* main loop */
-//
-//    send_eap_packet (EAPOL_LOGOFF);
-//
-//	pcap_close (handle);
-//    free (eap_response_ident);
-//    free (eap_response_md5ch);
-//    return EXIT_SUCCESS;
-//}
-//
