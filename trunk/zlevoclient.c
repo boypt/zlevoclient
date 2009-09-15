@@ -164,18 +164,21 @@ char        devname[64];
 u_char      eapol_start[64];            /* EAPOL START报文 */
 u_char      eapol_logoff[64];           /* EAPOL LogOff报文 */
 u_char      eapol_keepalive[64];
-u_char      *eap_response_ident = NULL; /* EAP RESPON/IDENTITY报文 */
-u_char      *eap_response_md5ch = NULL; /* EAP RESPON/MD5 报文 */
+u_char      eap_response_ident[128]; /* EAP RESPON/IDENTITY报文 */
+u_char      eap_response_md5ch[128]; /* EAP RESPON/MD5 报文 */
+
 
 //u_int       live_count = 0;             /* KEEP ALIVE 报文的计数值 */
 //pid_t       current_pid = 0;            /* 记录后台进程的pid */
 
 // debug function
 void 
-print_hex(const u_char *array, int count)
+print_hex(const uint8_t *array, int count)
 {
     int i;
     for(i = 0; i < count; i++){
+        if ( !(i % 16))
+            printf ("\n");
         printf("%02x ", array[i]);
     }
     printf("\n");
@@ -446,13 +449,15 @@ init_frames()
     memcpy (eapol_start + 14, start_data, 4);
     memcpy (eapol_start + 14 + 4, talier_eapol_start, 6);
 
-
+    print_hex(eapol_start, sizeof(eapol_start));
     /****EAPol LOGOFF ****/
     u_char logoff_data[4] = {0x01, 0x02, 0x00, 0x00};
     memset (eapol_logoff, 0xcc, 64);
     memcpy (eapol_logoff, eapol_header, 14);
     memcpy (eapol_logoff + 14, logoff_data, 4);
     memcpy (eapol_logoff + 14 + 4, talier_eapol_start, 4);
+
+    print_hex(eapol_logoff, sizeof(eapol_logoff));
 
     /****EAPol Keep alive ****/
     u_char keep_data[4] = {0x01, 0xfc, 0x00, 0x0c};
@@ -462,7 +467,7 @@ init_frames()
     memset (eapol_keepalive + 18, 0, 8);
     memcpy (eapol_keepalive + 26, &local_ip, 4);
     
-
+    print_hex(eapol_keepalive, sizeof(eapol_keepalive));
 
     /* EAP RESPONSE IDENTITY */
     u_char eap_resp_iden_head[9] = {0x01, 0x00, 
@@ -471,7 +476,7 @@ init_frames()
                                     0x00, 5 + username_length,       /* eap_length */
                                     0x01};
     
-    eap_response_ident = malloc (54 + username_length);
+//    eap_response_ident = malloc (54 + username_length);
     memset(eap_response_ident, 0xcc, 54 + username_length);
 
     data_index = 0;
@@ -481,6 +486,7 @@ init_frames()
     data_index += 9;
     memcpy (eap_response_ident + data_index, username, username_length);
 
+    print_hex(eap_response_ident, 54 + username_length);
     /** EAP RESPONSE MD5 Challenge **/
     u_char eap_resp_md5_head[10] = {0x01, 0x00, 
                                    0x00, 6 + 16 + username_length, /* eapol-length */
@@ -488,7 +494,7 @@ init_frames()
                                    0x00, /* id to be set */
                                    0x00, 6 + 16 + username_length, /* eap-length */
                                    0x04, 0x10};
-    eap_response_md5ch = malloc (14 + 4 + 6 + 16 + username_length + 14);
+//    eap_response_md5ch = malloc (14 + 4 + 6 + 16 + username_length + 14);
     memset(eap_response_md5ch, 0xcc, 14 + 4 + 6 + 16 + username_length + 14);
 
     data_index = 0;
@@ -501,6 +507,9 @@ init_frames()
     memcpy (eap_response_md5ch + data_index, &local_ip, 4);
     data_index += 4;
     memcpy (eap_response_md5ch + data_index, talier_eap_md5_resp, 9);
+
+    print_hex(eap_response_md5ch, 14 + 4 + 6 + 16 + username_length + 14);
+
 }
 
 void 
@@ -836,8 +845,8 @@ int main(int argc, char **argv)
     send_eap_packet (EAPOL_LOGOFF);
 
 	pcap_close (handle);
-    free (eap_response_ident);
-    free (eap_response_md5ch);
+//    free (eap_response_ident);
+//    free (eap_response_md5ch);
     return EXIT_SUCCESS;
 }
 

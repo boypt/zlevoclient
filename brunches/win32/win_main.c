@@ -5,7 +5,7 @@
 #include "commondef.h"
 //#include "eap_protocol.h"
 
-#define DIALOG_TITLE "zLenovoClient " ZRJ_VER ".1"
+#define DIALOG_TITLE "zLenovoClient ""0.6"".1"
 
 #define REG_KEY_IF_INDEX    "if_index"
 #define REG_KEY_IF_NAME     "if_name"
@@ -66,7 +66,7 @@ HWND                hwndComboList;
 
 HANDLE              hEAP_THREAD;
 HANDLE              hLIFE_KEEP_THREAD;
-HANDLE              hEXIT_WAITER;
+//HANDLE              hEXIT_WAITER;
 
 //#ifdef  __DEBUG
 void debug_msgbox (const char *fmt, ...)

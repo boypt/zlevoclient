@@ -149,8 +149,8 @@ char        devname[512];
 u_char      eapol_start[64];            /* EAPOL START报文 */
 u_char      eapol_logoff[64];           /* EAPOL LogOff报文 */
 u_char      eapol_keepalive[64];
-u_char      *eap_response_ident = NULL; /* EAP RESPON/IDENTITY报文 */
-u_char      *eap_response_md5ch = NULL; /* EAP RESPON/MD5 报文 */
+u_char      eap_response_ident[128]; /* EAP RESPON/IDENTITY报文 */
+u_char      eap_response_md5ch[128]; /* EAP RESPON/MD5 报文 */
 
 //u_int       live_count = 0;             /* KEEP ALIVE 报文的计数值 */
 //pid_t       current_pid = 0;            /* 记录后台进程的pid */
@@ -423,7 +423,7 @@ init_frames()
                                     0x00, 5 + username_length,       /* eap_length */
                                     0x01};
     
-    eap_response_ident = malloc (54 + username_length);
+//    eap_response_ident = malloc (54 + username_length);
     memset(eap_response_ident, 0xcc, 54 + username_length);
 
     data_index = 0;
@@ -433,7 +433,7 @@ init_frames()
     data_index += 9;
     memcpy (eap_response_ident + data_index, username, username_length);
 
-    print_hex(eap_response_ident, sizeof(eap_response_ident));
+    print_hex(eap_response_ident, 54 + username_length);
 
     /** EAP RESPONSE MD5 Challenge **/
     u_char eap_resp_md5_head[10] = {0x01, 0x00, 
@@ -442,7 +442,7 @@ init_frames()
                                    0x00, /* id to be set */
                                    0x00, 6 + 16 + username_length, /* eap-length */
                                    0x04, 0x10};
-    eap_response_md5ch = malloc (14 + 4 + 6 + 16 + username_length + 14);
+//    eap_response_md5ch = malloc (14 + 4 + 6 + 16 + username_length + 14);
     memset(eap_response_md5ch, 0xcc, 14 + 4 + 6 + 16 + username_length + 14);
 
     data_index = 0;
@@ -456,29 +456,7 @@ init_frames()
     data_index += 4;
     memcpy (eap_response_md5ch + data_index, talier_eap_md5_resp, 9);
 
-    print_hex(eap_response_md5ch, sizeof(eap_response_md5ch));
-}
-
-void 
-fill_password_md5(u_char *attach_key, u_int id)
-{
-    char *psw_key = malloc(1 + password_length + 16);
-    char *md5;
-    psw_key[0] = id;
-    memcpy (psw_key + 1, password, password_length);
-    memcpy (psw_key + 1 + password_length, attach_key, 16);
-
-    if (debug_on){
-        printf("@@DEBUG: MD5-Attach-KEY:\n");
-        print_hex ((u_char*)psw_key, 1 + password_length + 16);
-    }
-
-    md5 = get_md5_digest(psw_key, 1 + password_length + 16);
-
-    memset (eap_response_md5ch + 14 + 5, id, 1);
-    memcpy (eap_response_md5ch + 14 + 10, md5, 16);
-
-    free (psw_key);
+    print_hex(eap_response_md5ch, 14 + 4 + 6 + 16 + username_length + 14);
 }
 
 //void init_info()

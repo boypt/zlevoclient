@@ -52,6 +52,7 @@ action_eapol_success(const struct eap_header *eap_head,
 
     /* 打开保持线程 */
     hLIFE_KEEP_THREAD = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)keep_alive, 0, 0, 0);
+    edit_info_append("ONLINE");        
 }
 
 void
@@ -59,7 +60,7 @@ action_eapol_failre(const struct eap_header *eap_head,
                         const struct pcap_pkthdr *packetinfo,
                         const uint8_t *packet)
 {
-	extern HANDLE		hEXIT_WAITER;
+//	extern HANDLE		hEXIT_WAITER;
 	extern HANDLE		hLIFE_KEEP_THREAD;
 
     print_server_info (packet);
@@ -73,6 +74,8 @@ action_eapol_failre(const struct eap_header *eap_head,
         WaitForSingleObject (hLIFE_KEEP_THREAD, 1000);
     }
     pcap_breakloop (handle);
+    edit_info_append("FAILURE");        
+
 }
 
 void
@@ -83,6 +86,7 @@ action_eap_req_idnty(const struct eap_header *eap_head,
 	state = CONNECTING;
     eap_response_ident[0x13] = eap_head->eap_id;
     send_eap_packet(EAP_RESPONSE_IDENTITY);
+    edit_info_append("SENT IDN-RES");
 }
 
 void
@@ -94,6 +98,7 @@ action_eap_req_md5_chg(const struct eap_header *eap_head,
     fill_password_md5((uint8_t*)eap_head->eap_md5_challenge, eap_head->eap_id);
     eap_response_md5ch[0x13] = eap_head->eap_id;
     send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
+    edit_info_append("SENT PSW-RES");    
 }
 
 DWORD WINAPI keep_alive()
@@ -130,7 +135,7 @@ send_eap_packet(enum EAPType send_type)
 {
     uint8_t         *frame_data;
     int             frame_length = 0;
-//    extern size_t username_length;
+    extern size_t username_length;
 
     switch(send_type){
         case EAPOL_START:
@@ -143,11 +148,11 @@ send_eap_packet(enum EAPType send_type)
             break;
         case EAP_RESPONSE_IDENTITY:
             frame_data = eap_response_ident;
-            frame_length = sizeof(eap_response_ident);
+            frame_length = 54 + username_length;
             break;
         case EAP_RESPONSE_MD5_CHALLENGE:
             frame_data = eap_response_md5ch;
-            frame_length = sizeof(eap_response_md5ch);
+            frame_length = 14 + 4 + 6 + 16 + username_length + 14;
             break;
         case EAP_RESPONSE_IDENTITY_KEEP_ALIVE:
             frame_data = eap_life_keeping;
@@ -182,7 +187,7 @@ fill_password_md5(uint8_t attach_key[], uint8_t eap_id)
 
     md5 = get_md5_digest(psw_key, 1 + password_length + 16);
     memcpy (eap_response_md5ch + 14 + 10, md5, 16);
-
+//    memset (eap_response_md5ch + 14 + 5, eap_id, 1);
     free (psw_key);
 }
 
