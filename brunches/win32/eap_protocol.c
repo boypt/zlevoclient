@@ -206,33 +206,17 @@ get_md5_digest(const char* str, size_t len)
  * =====================================================================================
  */
 
-//void 
-//print_server_info (const u_char *str)
-//{
-//    if (!(str[0] == 0x2f && str[1] == 0xfc)) 
-//        return;
-//
-//    char info_str [1024] = {0};
-//    int length = str[2];
-////    if (code_convert ("gb2312", "utf-8", (char*)str + 3, length, info_str, 200) != 0){
-////        fprintf (stderr, "@@Error: Server info convert error.\n");
-////        return;
-////    }
-//    fprintf (stdout, "&&Server Info: %s\n", info_str);
-//}
-
 void 
 print_server_info (const uint8_t *packet)
 {
 
-    if ( *(packet + 0x18) != 0x2f && *(packet + 0x19) != 0xfc)
-        return;
+    if (0x2ffc == ntohs(*(uint16_t*)(packet + 0x18))) {
+        char info_str [1024] = {0};
+        uint8_t length = *(uint8_t*)(packet + 0x1a);
+        strncpy (info_str, (const char*)(packet + 0x1b), length);
+        edit_info_append (info_str);
+    }
 
-    char info_str [1024] = {0};
-    uint8_t length = *(uint8_t*)(packet + 0x20);
-    strncpy (info_str, (const char*)(packet + 0x21), length);
-
-    edit_info_append (info_str);
 }
 
 

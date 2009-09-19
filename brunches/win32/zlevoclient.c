@@ -293,7 +293,7 @@ init_frames()
     memcpy (eapol_start + 14, start_data, 4);
     memcpy (eapol_start + 14 + 4, talier_eapol_start, 6);
 
-    print_hex(eapol_start, sizeof(eapol_start));
+//    print_hex(eapol_start, sizeof(eapol_start));
     /****EAPol LOGOFF ****/
     u_char logoff_data[4] = {0x01, 0x02, 0x00, 0x00};
     memset (eapol_logoff, 0xcc, 64);
@@ -301,7 +301,7 @@ init_frames()
     memcpy (eapol_logoff + 14, logoff_data, 4);
     memcpy (eapol_logoff + 14 + 4, talier_eapol_start, 4);
 
-    print_hex(eapol_logoff, sizeof(eapol_logoff));
+//    print_hex(eapol_logoff, sizeof(eapol_logoff));
     /****EAPol Keep alive ****/
     u_char keep_data[4] = {0x01, 0xfc, 0x00, 0x0c};
     memset (eapol_keepalive, 0xcc, 64);
@@ -329,7 +329,7 @@ init_frames()
     data_index += 9;
     memcpy (eap_response_ident + data_index, username, username_length);
 
-    print_hex(eap_response_ident, 54 + username_length);
+//    print_hex(eap_response_ident, 54 + username_length);
 
     /** EAP RESPONSE MD5 Challenge **/
     u_char eap_resp_md5_head[10] = {0x01, 0x00, 
@@ -352,7 +352,7 @@ init_frames()
     data_index += 4;
     memcpy (eap_response_md5ch + data_index, talier_eap_md5_resp, 9);
 
-    print_hex(eap_response_md5ch, 14 + 4 + 6 + 16 + username_length + 14);
+//    print_hex(eap_response_md5ch, 14 + 4 + 6 + 16 + username_length + 14);
 }
 
 //void init_info()
