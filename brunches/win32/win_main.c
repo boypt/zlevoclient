@@ -5,7 +5,7 @@
 #include "commondef.h"
 //#include "eap_protocol.h"
 
-#define DIALOG_TITLE "zLenovoClient ""0.8"".4"
+#define DIALOG_TITLE "zLenovoClient ""0.8"".5"
 
 #define REG_KEY_IF_INDEX    "if_index"
 #define REG_KEY_IF_NAME     "if_name"

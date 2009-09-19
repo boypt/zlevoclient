@@ -32,11 +32,11 @@ DWORD WINAPI wait_exit();
 /*-----------------------------------------------------------------------------
  *  报文缓冲区，由init_frame函数初始化。
  *-----------------------------------------------------------------------------*/
-uint8_t             eapol_start[1000];            /* EAPOL START报文 */
-uint8_t             eapol_logoff[1000];           /* EAPOL LogOff报文 */
-uint8_t             eap_response_ident[1000]; /* EAP RESPON/IDENTITY报文 */
-uint8_t             eap_response_md5ch[1000]; /* EAP RESPON/MD5 报文 */
-uint8_t             eap_life_keeping[45];
+//uint8_t             eapol_start[1000];            /* EAPOL START报文 */
+//uint8_t             eapol_logoff[1000];           /* EAPOL LogOff报文 */
+//uint8_t             eap_response_ident[1000]; /* EAP RESPON/IDENTITY报文 */
+//uint8_t             eap_response_md5ch[1000]; /* EAP RESPON/MD5 报文 */
+//uint8_t             eap_life_keeping[45];
 extern enum STATE   state;
 
 extern pcap_t       *handle;
@@ -142,8 +142,8 @@ send_eap_packet(enum EAPType send_type)
             frame_length = 14 + 4 + 6 + 16 + username_length + 14;
             break;
         case EAP_RESPONSE_IDENTITY_KEEP_ALIVE:
-            frame_data = eap_life_keeping;
-            frame_length = sizeof(eap_life_keeping);
+            frame_data = eapol_keepalive;
+            frame_length = sizeof(eapol_keepalive);
             break;
         default:
             return;
