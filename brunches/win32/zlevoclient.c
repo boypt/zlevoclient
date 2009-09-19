@@ -146,11 +146,11 @@ char        devname[512];
 /*-----------------------------------------------------------------------------
  *  报文缓冲区，由init_frame函数初始化。
  *-----------------------------------------------------------------------------*/
-u_char      eapol_start[64];            /* EAPOL START报文 */
-u_char      eapol_logoff[64];           /* EAPOL LogOff报文 */
-u_char      eapol_keepalive[64];
-u_char      eap_response_ident[128]; /* EAP RESPON/IDENTITY报文 */
-u_char      eap_response_md5ch[128]; /* EAP RESPON/MD5 报文 */
+//u_char      eapol_start[64];            /* EAPOL START报文 */
+//u_char      eapol_logoff[64];           /* EAPOL LogOff报文 */
+//u_char      eapol_keepalive[64];
+//u_char      eap_response_ident[128]; /* EAP RESPON/IDENTITY报文 */
+//u_char      eap_response_md5ch[128]; /* EAP RESPON/MD5 报文 */
 
 //u_int       live_count = 0;             /* KEEP ALIVE 报文的计数值 */
 //pid_t       current_pid = 0;            /* 记录后台进程的pid */
@@ -276,6 +276,13 @@ init_frames()
 
     int data_index;
 
+    extern u_char      eapol_start[];            /* EAPOL START报文 */
+    extern u_char      eapol_logoff[];           /* EAPOL LogOff报文 */
+    extern u_char      eapol_keepalive[];
+    extern u_char      eap_response_ident[]; /* EAP RESPON/IDENTITY报文 */
+    extern u_char      eap_response_md5ch[]; /* EAP RESPON/MD5 报文 */
+
+
     /*****  EAPOL Header  *******/
     u_char eapol_header[SIZE_ETHERNET];
     data_index = 0;
@@ -310,7 +317,7 @@ init_frames()
     memset (eapol_keepalive + 18, 0, 8);
     memcpy (eapol_keepalive + 26, &local_ip, 4);
     
-    print_hex(eapol_keepalive, sizeof(eapol_keepalive));
+//    print_hex(eapol_keepalive, sizeof(eapol_keepalive));
 
     /* EAP RESPONSE IDENTITY */
     u_char eap_resp_iden_head[9] = {0x01, 0x00, 
@@ -355,17 +362,6 @@ init_frames()
 //    print_hex(eap_response_md5ch, 14 + 4 + 6 + 16 + username_length + 14);
 }
 
-//void init_info()
-//{
-//    if(username == NULL || password == NULL){
-//        fprintf (stderr,"Error: NO Username or Password promoted.\n"
-//                        "Try zlevoclient --help for usage.\n");
-//        exit(EXIT_FAILURE);
-//    }
-//    username_length = strlen(username);
-//    password_length = strlen(password);
-//
-//}
 
 /* 
  * ===  FUNCTION  ======================================================================

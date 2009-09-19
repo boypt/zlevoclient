@@ -37,6 +37,16 @@ DWORD WINAPI wait_exit();
 //uint8_t             eap_response_ident[1000]; /* EAP RESPON/IDENTITY报文 */
 //uint8_t             eap_response_md5ch[1000]; /* EAP RESPON/MD5 报文 */
 //uint8_t             eap_life_keeping[45];
+
+/* #####   TYPE DEFINITIONS   ######################### */
+/*-----------------------------------------------------------------------------
+ *  报文缓冲区，由init_frame函数初始化。
+ *-----------------------------------------------------------------------------*/
+u_char      eapol_start[64];            /* EAPOL START报文 */
+u_char      eapol_logoff[64];           /* EAPOL LogOff报文 */
+u_char      eapol_keepalive[64];
+u_char      eap_response_ident[128]; /* EAP RESPON/IDENTITY报文 */
+u_char      eap_response_md5ch[128]; /* EAP RESPON/MD5 报文 */
 extern enum STATE   state;
 
 extern pcap_t       *handle;
