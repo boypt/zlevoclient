@@ -4,7 +4,7 @@
 CPP  = i486-mingw32-g++
 CC   = i486-mingw32-gcc
 WINDRES = i486-mingw32-windres
-RES  = zRuijie4GZHU_private.res
+RES  = window.res
 OBJ  =  win_main.o md5.o eap_protocol.o zlevoclient.o  $(RES)
 LINKOBJ  = $(OBJ)
 LIBS =  -L"/usr/i486-mingw32/lib" -L"WpdPack/Lib" -lcomctl32 -lwpcap -lws2_32 -liphlpapi -mwindows 
@@ -42,5 +42,5 @@ md5.o: md5.c
 zruijie.o: zruijie.c
 	$(CC) -c zruijie.c -o zruijie.o $(CFLAGS)
 
-zRuijie4GZHU_private.res: zRuijie4GZHU_private.rc 
-	$(WINDRES) -i zRuijie4GZHU_private.rc --input-format=rc -o zRuijie4GZHU_private.res -O coff 
+window.res: window.rc 
+	$(WINDRES) -i window.rc --input-format=rc -o window.res -O coff 

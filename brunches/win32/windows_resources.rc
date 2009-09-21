@@ -48,12 +48,12 @@ BEGIN
     BLOCK "FFFF0000"
     BEGIN
       VALUE "FileVersion", "2.0.0.9\0"
-      VALUE "ProductVersion", "0.2.0.0\0"
+      VALUE "ProductVersion", "$Revision$\0"
       VALUE "CompanyName", "PT Work. http://apt-blog.net\0"
-      VALUE "FileDescription", "Shanzhai Ruijie Client.\0"
+      VALUE "FileDescription", "Shanzhai Lenovo 802.1x Client.\0"
       VALUE "LegalCopyright", "MIT Licences\0"
-      VALUE "OriginalFilename", "zRuijie4GZHU.exe\0"
-      VALUE "ProductName", "zRuijie4GZHU\0"
+      VALUE "OriginalFilename", "zLenovoClient.exe\0"
+      VALUE "ProductName", "zLenovoClient\0"
     END
   END
   BLOCK "VarFileInfo"
