@@ -31,6 +31,16 @@
 
 #include <netinet/in.h>
 #include <net/if.h>
+#include <net/ethernet.h>
+
+
+#ifndef __linux
+//------bsd/apple mac
+    #include <net/if_var.h>
+    #include <net/if_dl.h>
+    #include <net/if_types.h>
+#endif
+
 
 #include <pthread.h>
 #include <signal.h>
@@ -50,9 +60,6 @@
 
 /* ethernet headers are always exactly 14 bytes [1] */
 #define SIZE_ETHERNET 14
-
-/* Ethernet addresses are 6 bytes */
-#define ETHER_ADDR_LEN	6
 
 #define LOCKFILE "/var/run/zlevoclient.pid"
 
@@ -600,6 +607,7 @@ void init_device()
         }
     }
 
+#ifdef __linux
     /* get device basic infomation */
     struct ifreq ifr;
     int sock;
@@ -617,6 +625,12 @@ void init_device()
         exit(EXIT_FAILURE);
     }
     memcpy(local_mac, ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
+#else
+    if (bsd_get_mac (dev, local_mac) != 0) {
+		fprintf(stderr, "FATIL: Fail getting BSD/MACOS Mac Address.\n");
+		exit(EXIT_FAILURE);
+    }
+#endif
 
     /* construct the filter string */
     sprintf(filter_exp, "ether dst %02x:%02x:%02x:%02x:%02x:%02x"
@@ -850,3 +864,42 @@ int main(int argc, char **argv)
     return EXIT_SUCCESS;
 }
 
+#ifndef __linux
+int bsd_get_mac(const char ifname[], char eth_addr[])
+{
+    struct ifreq *ifrp;
+    struct ifconf ifc;
+    char buffer[720];
+    int socketfd,error,len,space=0;
+    ifc.ifc_len=sizeof(buffer);
+    len=ifc.ifc_len;
+    ifc.ifc_buf=buffer;
+
+    socketfd=socket(AF_INET,SOCK_DGRAM,0);
+
+    if((error=ioctl(socketfd,SIOCGIFCONF,&ifc))<0)
+    {
+        perror("ioctl faild");
+        exit(1);
+    }
+    if(ifc.ifc_len<=len)
+    {
+        ifrp=ifc.ifc_req;
+        do
+        {
+            struct sockaddr *sa=&ifrp->ifr_addr;
+            
+            if(((struct sockaddr_dl *)sa)->sdl_type==IFT_ETHER) {
+                if (strcmp(ifname, ifrp->ifr_name) == 0){
+                    memcpy (eth_addr, LLADDR((struct sockaddr_dl *)&ifrp->ifr_addr), 6);
+                    return 0;
+                }
+            }
+            ifrp=(struct ifreq*)(sa->sa_len+(caddr_t)&ifrp->ifr_addr);
+            space+=(int)sa->sa_len+sizeof(ifrp->ifr_name);
+        }
+        while(space<ifc.ifc_len);
+    }
+    return 1;
+}
+#endif
