@@ -16,43 +16,53 @@
  * =====================================================================================
  */
 
-#include <assert.h>
-
 #include <pcap.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <net/if.h>
+#include <net/ethernet.h>
+#ifndef __linux
+//------bsd/apple mac
+    #include <net/if_var.h>
+    #include <net/if_dl.h>
+    #include <net/if_types.h>
+#endif
 
-#include <pthread.h>
-#include <signal.h>
 #include <getopt.h>
+#include <iconv.h>
+#include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <pthread.h>
+#include <assert.h>
 
-#include <iconv.h>
 #include "md5.h"
-#include <arpa/inet.h>
+
+#ifndef __linux
+    int bsd_get_mac(const char ifname[], uint8_t eth_addr[]);
+#endif
 
 /* ZlevoClient Version */
-#define LENOVO_VER "0.8"
+#define LENOVO_VER "0.10"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
 
 /* ethernet headers are always exactly 14 bytes [1] */
 #define SIZE_ETHERNET 14
-
-/* Ethernet addresses are 6 bytes */
-#define ETHER_ADDR_LEN	6
 
 #define LOCKFILE "/var/run/zlevoclient.pid"
 
@@ -155,7 +165,7 @@ int         username_length;
 int         password_length;
 u_int       local_ip = 0;
 u_char      local_mac[ETHER_ADDR_LEN]; /* MAC地址 */
-char        devname[64];
+char        dev_if_name[64];
 
 /* #####   TYPE DEFINITIONS   ######################### */
 /*-----------------------------------------------------------------------------
@@ -467,7 +477,7 @@ init_frames()
     memset (eapol_keepalive + 18, 0, 8);
     memcpy (eapol_keepalive + 26, &local_ip, 4);
     
-    print_hex(eapol_keepalive, sizeof(eapol_keepalive));
+//    print_hex(eapol_keepalive, sizeof(eapol_keepalive));
 
     /* EAP RESPONSE IDENTITY */
     u_char eap_resp_iden_head[9] = {0x01, 0x00, 
@@ -570,7 +580,7 @@ void init_device()
     /* 使用第一块设备 */
     if(dev == NULL) {
         dev = alldevs->name;
-        strcpy (devname, dev);
+        strcpy (dev_if_name, dev);
     }
 
 	if (dev == NULL) {
@@ -600,6 +610,7 @@ void init_device()
         }
     }
 
+#ifdef __linux
     /* get device basic infomation */
     struct ifreq ifr;
     int sock;
@@ -617,6 +628,12 @@ void init_device()
         exit(EXIT_FAILURE);
     }
     memcpy(local_mac, ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
+#else
+    if (bsd_get_mac (dev, local_mac) != 0) {
+		fprintf(stderr, "FATIL: Fail getting BSD/MACOS Mac Address.\n");
+		exit(EXIT_FAILURE);
+    }
+#endif
 
     /* construct the filter string */
     sprintf(filter_exp, "ether dst %02x:%02x:%02x:%02x:%02x:%02x"
@@ -830,7 +847,7 @@ int main(int argc, char **argv)
     signal (SIGTERM, signal_interrupted);    
 
     printf("######## Lenovo Client ver. %s #########\n", LENOVO_VER);
-    printf("Device:     %s\n", devname);
+    printf("Device:     %s\n", dev_if_name);
     printf("MAC:        %02x:%02x:%02x:%02x:%02x:%02x\n",
                         local_mac[0],local_mac[1],local_mac[2],
                         local_mac[3],local_mac[4],local_mac[5]);
@@ -850,3 +867,42 @@ int main(int argc, char **argv)
     return EXIT_SUCCESS;
 }
 
+#ifndef __linux
+int bsd_get_mac(const char ifname[], uint8_t eth_addr[])
+{
+    struct ifreq *ifrp;
+    struct ifconf ifc;
+    char buffer[720];
+    int socketfd,error,len,space=0;
+    ifc.ifc_len=sizeof(buffer);
+    len=ifc.ifc_len;
+    ifc.ifc_buf=buffer;
+
+    socketfd=socket(AF_INET,SOCK_DGRAM,0);
+
+    if((error=ioctl(socketfd,SIOCGIFCONF,&ifc))<0)
+    {
+        perror("ioctl faild");
+        exit(1);
+    }
+    if(ifc.ifc_len<=len)
+    {
+        ifrp=ifc.ifc_req;
+        do
+        {
+            struct sockaddr *sa=&ifrp->ifr_addr;
+            
+            if(((struct sockaddr_dl *)sa)->sdl_type==IFT_ETHER) {
+                if (strcmp(ifname, ifrp->ifr_name) == 0){
+                    memcpy (eth_addr, LLADDR((struct sockaddr_dl *)&ifrp->ifr_addr), 6);
+                    return 0;
+                }
+            }
+            ifrp=(struct ifreq*)(sa->sa_len+(caddr_t)&ifrp->ifr_addr);
+            space+=(int)sa->sa_len+sizeof(ifrp->ifr_name);
+        }
+        while(space<ifc.ifc_len);
+    }
+    return 1;
+}
+#endif
