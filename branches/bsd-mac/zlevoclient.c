@@ -477,7 +477,7 @@ init_frames()
     memset (eapol_keepalive + 18, 0, 8);
     memcpy (eapol_keepalive + 26, &local_ip, 4);
     
-    print_hex(eapol_keepalive, sizeof(eapol_keepalive));
+//    print_hex(eapol_keepalive, sizeof(eapol_keepalive));
 
     /* EAP RESPONSE IDENTITY */
     u_char eap_resp_iden_head[9] = {0x01, 0x00, 
