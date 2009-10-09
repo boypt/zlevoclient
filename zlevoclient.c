@@ -16,25 +16,24 @@
  * =====================================================================================
  */
 
-#include <assert.h>
-
 #include <pcap.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
-#include <arpa/inet.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <net/if.h>
 #include <net/ethernet.h>
-
-
 #ifndef __linux
 //------bsd/apple mac
     #include <net/if_var.h>
@@ -42,14 +41,14 @@
     #include <net/if_types.h>
 #endif
 
-
-#include <pthread.h>
-#include <signal.h>
 #include <getopt.h>
+#include <iconv.h>
+#include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <pthread.h>
+#include <assert.h>
 
-#include <iconv.h>
 #include "md5.h"
 
 
