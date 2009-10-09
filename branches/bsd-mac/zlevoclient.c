@@ -51,9 +51,12 @@
 
 #include "md5.h"
 
+#ifndef __linux
+    int bsd_get_mac(const char ifname[], uint8_t eth_addr[]);
+#endif
 
 /* ZlevoClient Version */
-#define LENOVO_VER "0.8"
+#define LENOVO_VER "0.10"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
@@ -865,7 +868,7 @@ int main(int argc, char **argv)
 }
 
 #ifndef __linux
-int bsd_get_mac(const char ifname[], char eth_addr[])
+int bsd_get_mac(const char ifname[], uint8_t eth_addr[])
 {
     struct ifreq *ifrp;
     struct ifconf ifc;
