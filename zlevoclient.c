@@ -29,6 +29,7 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <net/if.h>
 #include <net/ethernet.h>
@@ -50,7 +51,7 @@
 
 #include <iconv.h>
 #include "md5.h"
-#include <arpa/inet.h>
+
 
 /* ZlevoClient Version */
 #define LENOVO_VER "0.8"
@@ -162,7 +163,7 @@ int         username_length;
 int         password_length;
 u_int       local_ip = 0;
 u_char      local_mac[ETHER_ADDR_LEN]; /* MAC地址 */
-char        devname[64];
+char        dev_if_name[64];
 
 /* #####   TYPE DEFINITIONS   ######################### */
 /*-----------------------------------------------------------------------------
@@ -577,7 +578,7 @@ void init_device()
     /* 使用第一块设备 */
     if(dev == NULL) {
         dev = alldevs->name;
-        strcpy (devname, dev);
+        strcpy (dev_if_name, dev);
     }
 
 	if (dev == NULL) {
@@ -844,7 +845,7 @@ int main(int argc, char **argv)
     signal (SIGTERM, signal_interrupted);    
 
     printf("######## Lenovo Client ver. %s #########\n", LENOVO_VER);
-    printf("Device:     %s\n", devname);
+    printf("Device:     %s\n", dev_if_name);
     printf("MAC:        %02x:%02x:%02x:%02x:%02x:%02x\n",
                         local_mac[0],local_mac[1],local_mac[2],
                         local_mac[3],local_mac[4],local_mac[5]);
