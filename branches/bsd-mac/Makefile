@@ -1,5 +1,5 @@
 CC = gcc
-LIBS = /usr/lib/libpcap.a -lpthread -liconv
+LIBS = /usr/lib/libpcap.a -lpthread
 CFLAGS = -Wall -g
 
 .PHONY: all
