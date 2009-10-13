@@ -46,7 +46,6 @@
 #include <signal.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <pthread.h>
 #include <assert.h>
 
 #include "md5.h"
@@ -56,7 +55,7 @@
 #endif
 
 /* ZlevoClient Version */
-#define LENOVO_VER "0.10"
+#define LENOVO_VER "0.11"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
@@ -120,7 +119,7 @@ void    init_arguments(int argc, char **argv);
 int     set_device_new_ip();
 void    fill_password_md5(u_char *attach_key, u_int id);
 int     program_running_check();
-void*   keep_alive(void *arg);
+void   keep_alive();
 int     code_convert(char *from_charset, char *to_charset,
              char *inbuf, size_t inlen, char *outbuf, size_t outlen);
 void    print_server_info (const u_char *str);
@@ -141,7 +140,6 @@ int         lockfile;
 char        errbuf[PCAP_ERRBUF_SIZE];  /* error buffer */
 enum STATE  state = READY;                     /* program state */
 pcap_t      *handle = NULL;			   /* packet capture handle */
-pthread_t   live_keeper_id;
 u_char      muticast_mac[] =            /* 802.1x的认证服务器多播地址 */
                         {0x01, 0x80, 0xc2, 0x00, 0x00, 0x03};
 
@@ -320,13 +318,9 @@ action_by_eap_type(enum EAPType pType,
                 background = 0;         /* 防止以后误触发 */
                 daemon_init ();  /* fork至后台，主程序退出 */
             }
-            if ( !live_keeper_id ) {
-                if ( pthread_create(&live_keeper_id, NULL, 
-                                            keep_alive, NULL) != 0 ){
-                    fprintf(stderr, "@@Fatal ERROR: Init Live keep thread failure.\n");
-                    exit (EXIT_FAILURE);
-                }
-            }
+
+            /* Set alarm to send keep alive packet */
+            alarm(60);
             break;
         case EAP_FAILURE:
             if (state == READY) {
@@ -726,13 +720,9 @@ void init_arguments(int argc, char **argv)
     }    
 }
 
-void* keep_alive(void *arg)
+void keep_alive()
 {
-    while (1) {
-        send_eap_packet (EAP_RESPONSE_IDENTITY_KEEP_ALIVE);
-        sleep (60);
-    }
-    return (void*)0;
+    send_eap_packet (EAP_RESPONSE_IDENTITY_KEEP_ALIVE);
 }
 
 void
@@ -844,7 +834,8 @@ int main(int argc, char **argv)
     init_frames ();
 
     signal (SIGINT, signal_interrupted);
-    signal (SIGTERM, signal_interrupted);    
+    signal (SIGTERM, signal_interrupted);
+    signal (SIGALRM, keep_alive);
 
     printf("######## Lenovo Client ver. %s #########\n", LENOVO_VER);
     printf("Device:     %s\n", dev_if_name);
