@@ -1,6 +1,7 @@
 CC = gcc
-LIBS = /usr/lib/libpcap.a -lpthread
+LIBS = /usr/lib/libpcap.a
 CFLAGS = -Wall -g
+
 
 .PHONY: all
 all: zlevoclient
