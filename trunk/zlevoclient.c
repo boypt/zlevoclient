@@ -55,7 +55,7 @@
 #endif
 
 /* ZlevoClient Version */
-#define LENOVO_VER "0.11"
+#define LENOVO_VER "0.12"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
@@ -64,6 +64,8 @@
 #define SIZE_ETHERNET 14
 
 #define LOCKFILE "/var/run/zlevoclient.pid"
+
+#define KEEP_ALIVE_TIME 60
 
 #define LOCKMODE (S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
 
@@ -320,7 +322,7 @@ action_by_eap_type(enum EAPType pType,
             }
 
             /* Set alarm to send keep alive packet */
-            alarm(60);
+            alarm(KEEP_ALIVE_TIME);
             break;
         case EAP_FAILURE:
             if (state == READY) {
@@ -723,6 +725,7 @@ void init_arguments(int argc, char **argv)
 void keep_alive()
 {
     send_eap_packet (EAP_RESPONSE_IDENTITY_KEEP_ALIVE);
+    alarm(KEEP_ALIVE_TIME);
 }
 
 void
