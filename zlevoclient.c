@@ -55,7 +55,7 @@
 #endif
 
 /* ZlevoClient Version */
-#define LENOVO_VER "0.12"
+#define LENOVO_VER "1.0"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
