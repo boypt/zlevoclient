@@ -1,4 +1,4 @@
-ZLEVOClient v0.2 Readme
+﻿ZLEVOClient v1.1_haut Readme
 
 编译：
 	编译需要libpcap库，一般Linux发行版里面安装libpcap-dev包即可，如ubuntu： sudo apt-get install libpcap-dev
@@ -31,8 +31,8 @@ ZLEVOClient v0.2 Readme
     这样以后只需直接运行
     zlevoclient -u username -p password --background
 
-	压缩包内提供了启动脚本zlevo_run.sh，用gedit等编辑软件修改sh文件内的username、password，
-	以后运行 ./zlevo_run.sh即可。
+	压缩包内提供了启动脚本zrun.sh，用gedit等编辑软件修改sh文件内的username、password，
+	以后运行 ./zrun.sh即可。(anyanmw@gmail.com 的脚本2010-4-2)
 	
 终止：
 	默认方式启动的程序，按Ctrl + C即可正常下线，程序终止；
@@ -46,3 +46,8 @@ Blog:    http://apt-blog.co.cc
 GMail:   pentie@gmail.com
 
 2009-05-20 于广州大学城
+
+Anyanmw@gmail.com
+分支:haut-client
+角色:Commiter
+提交日期:2010-4-6

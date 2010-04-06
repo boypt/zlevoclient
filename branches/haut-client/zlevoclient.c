@@ -55,7 +55,7 @@
 #endif
 
 /* ZlevoClient Version */
-#define LENOVO_VER "1.0"
+#define LENOVO_VER "1.1_haut"
 
 /* default snap length (maximum bytes per packet to capture) */
 #define SNAP_LEN 1518
@@ -97,6 +97,10 @@ enum EAPType {
     EAP_RESPONSE_IDENTITY_KEEP_ALIVE,
     EAP_REQUETS_MD5_CHALLENGE,
     EAP_RESPONSE_MD5_CHALLENGE,
+    EAP_REQUEST_HTTP_DIGEST1,/**Add By An For Haut [Tavakoli] **/
+    EAP_RESPONSE_HTTP_DIGEST1,/**Add By An For Haut [Tavakoli] **/
+    EAP_REQUEST_HTTP_DIGEST2,/**Add By An For Haut [Tavakoli] **/
+    EAP_RESPONSE_HTTP_DIGEST2,/**Add By An For Haut [Tavakoli] **/
     EAP_SUCCESS,
     EAP_FAILURE,
     ERROR
@@ -131,9 +135,21 @@ static void signal_interrupted (int signo);
 static void get_packet(u_char *args, const struct pcap_pkthdr *header, 
                         const u_char *packet);
 
-u_char talier_eapol_start[] = {0x00, 0x00, 0x2f, 0xfc, 0x03, 0x00};
+u_char talier_eapol_start[] = {0x00, 0x00, 0x2f, 0xfc, 0x03, 0x00};//the last is 0x01 ,not 0x00;but 0x00 is ok#######################
 u_char talier_eap_md5_resp[] = {0x00, 0x00, 0x2f, 0xfc, 0x00, 0x03, 0x01, 0x01, 0x00};
-
+/**************一下是eap_http_digest的tailer数据内容,待验证准确性******************/
+u_char tailer_eap_http_resp1[]={0x01,0x00,0x07,0x00,0x72,0x00,0x00,0x01,0x37,
+0x00,0x01,0x00,0x6a,0x00,0x02,0x00,0x04,0x00,0x01,0x37,0x00,0x00,0x07,0x00,0x3f,
+0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+0x00,0x00,0x00,0x00,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+0x00,0x03,0x00,0x05,0x00,0x00,0x06,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
+0x02,0x00,0x04,0x00,0x2f,0xfc,0x00,0x01,0x91,0x00,0x13,0x00,0x00,0x00,0x05,0x00,
+0x00,0x00,0x01,0x00,0x00,0x00,0x28,0x00,0x03,0x00,0x00,0x00,0x00,0x00};//last is ip   ,0xac,0x10,0x2a,0xd8//#######119Byte
+u_char tailer_eap_http_resp2[]={0x73, 0x40, 0xea, 0x12, 0x00 ,
+0x60, 0x04, 0xff, 0x73, 0x50, 0x02, 0xff, 0x73, 0x00, 0x00, 0x00, 0x00, 0x5c, 0x04, 0xff, 0x73,
+0x0d, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x60, 0x00, 0x00, 0x00};//########37Byte
+/***************#大致含义为要求检测antiarp.exe等进程，然后发送报文已经检测到#*****************/
 /* #####   GLOBLE VAR DEFINITIONS   ######################### */
 /*-----------------------------------------------------------------------------
  *  程序的主控制变量
@@ -176,7 +192,11 @@ u_char      eapol_logoff[64];           /* EAPOL LogOff报文 */
 u_char      eapol_keepalive[64];
 u_char      eap_response_ident[128]; /* EAP RESPON/IDENTITY报文 */
 u_char      eap_response_md5ch[128]; /* EAP RESPON/MD5 报文 */
-
+/*********#新增加的HTTP_DIGEST的回应部分报文#***************/
+u_char      eap_response_http1[146]; /** EAP_RESPONSE_HTTP1_DIGEST报文**/ //#####add By An For Haut [Tavakoli]
+u_char      eap_response_http2[64];  /** EAP_RESPONSE_HTTP2_DIGEST报文**/ //#####add By An For Haut [Tavakoli]
+int         http_num=0;    /**0 or1 @:此参数作为分辨http1或者2的计数器**/
+/*********#新增加的HTTP_DIGEST的回应部分报文#***************/
 
 //u_int       live_count = 0;             /* KEEP ALIVE 报文的计数值 */
 //pid_t       current_pid = 0;            /* 记录后台进程的pid */
@@ -285,12 +305,32 @@ get_md5_digest(const char* str, size_t len)
 enum EAPType 
 get_eap_type(const struct sniff_eap_header *eap_header) 
 {
+     if(1 == debug_on){//增加测试内容
+        fprintf (stdout, "&&IMPORTANT: Current Package : eap_t:      %02x\n"
+                    "                               eap_id: %02x\n"
+                    "                               eap_op:     %02x\n", 
+                    eap_header->eap_t, eap_header->eap_id,
+                    eap_header->eap_op);
+      }//增加测试内容
     switch (eap_header->eap_t){
         case 0x01:
             if (eap_header->eap_op == 0x01)
                     return EAP_REQUEST_IDENTITY;
             if (eap_header->eap_op == 0x04)
                     return EAP_REQUETS_MD5_CHALLENGE;
+/******************此处为判断eap类型为0x26即EAP_HTTP_DIGEST******************/
+            if (eap_header->eap_op == 0x26)////add By An For Haut
+             {
+                if(http_num == 0){
+                     http_num=1;
+                     return EAP_REQUEST_HTTP_DIGEST1;////add By An For Haut
+                     }	
+                     else if(http_num == 1){
+                     http_num=0;
+                     return EAP_REQUEST_HTTP_DIGEST2;////add By An For Haut
+                     }
+            }//end if(eap_header->eap_op == 0x26)
+/******************此处为判断eap类型为0x26即EAP_HTTP_DIGEST******************/
             break;
         case 0x03:
         //    if (eap_header->eap_id == 0x02)
@@ -357,6 +397,19 @@ action_by_eap_type(enum EAPType pType,
                                         header->eap_id);
             send_eap_packet(EAP_RESPONSE_MD5_CHALLENGE);
             break;
+/****此处为判断eap类型为0x26即EAP_REQUEST_HTTP_DIGEST的两个服务器发来的报文,然后填充id,发送相应报文****/
+        case EAP_REQUEST_HTTP_DIGEST1:
+            fprintf(stdout, ">>Protocol: EAP_REQUETS_HTTP_DIGEST-1    ///add by An For haut test!\n");
+	    memset (eap_response_http1 + 14 + 5, header->eap_id, 1);/**146Byte**/
+            send_eap_packet(EAP_RESPONSE_HTTP_DIGEST1);
+            break;
+        case EAP_REQUEST_HTTP_DIGEST2:
+            fprintf(stdout, ">>Protocol: EAP_REQUETS_HTTP_DIGEST-2    ///add by An For haut test!\n");
+	    memset (eap_response_http2 + 14 + 5, header->eap_id, 1);/**64Byte**/
+            send_eap_packet(EAP_RESPONSE_HTTP_DIGEST2);
+            break;
+/****此处为判断eap类型为0x26即EAP_REQUEST_HTTP_DIGEST的两个服务器发来的报文,然后填充id,发送相应报文****/
+	 
         default:
             return;
     }
@@ -395,6 +448,18 @@ send_eap_packet(enum EAPType send_type)
             frame_length = 64;
             fprintf(stdout, ">>Protocol: SEND EAPOL Keep Alive\n");
             break;
+/************发送EAP_HTTP_DIGEST的两种resonse类型报文************/
+        case EAP_RESPONSE_HTTP_DIGEST1:
+	    frame_data = eap_response_http1;
+            frame_length = 146;
+            fprintf(stdout, ">>Protocol: SEND EAP_RESPONSE_HTTP_DIGEST-1  //add by An For haut test!\n");
+            break;
+	case EAP_RESPONSE_HTTP_DIGEST2:
+	    frame_data = eap_response_http2;
+            frame_length = 64;
+            fprintf(stdout, ">>Protocol: SEND EAP_RESPONSE_HTTP_DIGEST-2  //add by An For haut test!\n");
+            break;
+/************发送EAP_HTTP_DIGEST的两种resonse类型报文************/
         default:
             fprintf(stderr,"&&IMPORTANT: Wrong Send Request Type.%02x\n", send_type);
             return;
@@ -515,7 +580,41 @@ init_frames()
     memcpy (eap_response_md5ch + data_index, talier_eap_md5_resp, 9);
 
 //    print_hex(eap_response_md5ch, 14 + 4 + 6 + 16 + username_length + 14);
+/************初始化发送EAP_HTTP_DIGEST的两种resonse类型报文************/
 
+	/* EAP Resonse Http -1 */
+    u_char eap_resp_http1_head[9] = {0x01,0x00,
+                                     0x00,0x7c,
+                                     0x02,
+                                     0x00,		//id to be set (http1)
+                                     0x00,0x7c,		//0x7c = 124 = length of (1+1+2+1)+tavakoli;tavakoli=119Byte
+                                     0x26/* type=38 */};//toatol=146Byte
+    data_index = 0;
+    memcpy (eap_response_http1 + data_index, eapol_header, 14);
+    data_index += 14;
+    memcpy (eap_response_http1 + data_index, eap_resp_http1_head, 9);
+    data_index += 9;
+    memcpy (eap_response_http1 + data_index, tailer_eap_http_resp1, 119);
+    data_index += 119;
+    memcpy (eap_response_http1 + data_index, &local_ip, 4);
+
+	/* EAP Resonse Http -2 */
+    u_char eap_resp_http2_head[9] = {0x01,0x00,
+                                     0x00,0x09,		//0x09 == length of(1+1+2+1)+IP
+                                     0x02,
+                                     0x00,		//id to be set (http2)
+                                     0x00,0x05,
+                                     0x26/* type=38 */};//toatol=64Byte
+     data_index = 0;
+    memcpy (eap_response_http2 + data_index, eapol_header, 14);
+    data_index += 14;
+    memcpy (eap_response_http2 + data_index, eap_resp_http2_head, 9);
+    data_index += 9;
+    memcpy (eap_response_http2 + data_index, &local_ip, 4);
+     data_index += 4;
+    memcpy (eap_response_http2 + data_index, tailer_eap_http_resp2, 37);
+
+/************初始化发送EAP_HTTP_DIGEST的两种resonse类型报文************/
 }
 
 void 
