@@ -2,7 +2,7 @@
 #############################################
 ##请更改一下两个参数为你的802.1x的用户名和密码
 ##
-##Edit by anyanmw@gmail.com in haut
+##Edit by anyanmw@gmail.com in haut 2010-4-6
 #############################################
 
 USERNAME=username
